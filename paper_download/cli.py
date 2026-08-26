@@ -115,7 +115,7 @@ def cmd_library_login(args: argparse.Namespace) -> None:
             print("提示：先完全退出 Chrome 再试；macOS 首次可能弹 Keychain 授权,请允许。")
             return
         print(f"已从 Chrome 导入 {n} 条 cookie(学术相关域) -> {cookie_file()}")
-        print("现在可运行：paper-extract fetch --collection <name> --output-format json --access library")
+        print("现在可运行：python paper_download.py fetch --collection <name> --output-format json --access library")
         return
 
     from .library.browser import library_login
@@ -125,8 +125,9 @@ def cmd_library_login(args: argparse.Namespace) -> None:
     print("Library login: " + ("captured session/cookies" if ok else "did not complete"))
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="paper-extract")
+# prog=None lets argparse read argv[0]: "paper_download.py" via the launcher, "paper-download" via the console script
+def build_parser(prog: str | None = None) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog=prog)
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("search-plan", help="Generate a reproducible literature search plan")
@@ -218,6 +219,6 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> None:
-    args = build_parser().parse_args(argv)
+def main(argv: list[str] | None = None, prog: str | None = None) -> None:
+    args = build_parser(prog).parse_args(argv)
     args.func(args)

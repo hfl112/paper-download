@@ -19,7 +19,7 @@ from ._shared import retry_get
 BASE_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
 PAGE_SIZE = 1000          # Europe PMC 单页上限
 THROTTLE = 0.34           # 每页请求间隔（秒），约 3 req/s，友好限流
-USER_AGENT = "paper-extract/1.0 (literature review tool)"
+USER_AGENT = "paper-download/1.0 (literature review tool)"
 
 
 def _request(url: str, max_retries: int = 5) -> dict:

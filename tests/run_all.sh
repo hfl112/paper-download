@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run the full offline test suite (unit + smoke). Manual tests are in tests/README.md.
 #
-# Uses the Python environment where paper-extract is installed:
+# Uses the Python environment where paper-download is installed:
 #   source .venv/bin/activate && bash tests/run_all.sh
 # or point PYTHON at any interpreter explicitly:
 #   PYTHON=.venv/bin/python bash tests/run_all.sh

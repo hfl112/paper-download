@@ -1,9 +1,9 @@
 """Fast, offline unit tests for pure helper functions."""
 from __future__ import annotations
 
-from paper_extract.collection.ids import article_id_from_parts, normalize_doi
-from paper_extract.schema import article_kind, merge_article, new_article
-from paper_extract.time import stamp_from_iso, utc_now
+from paper_download.collection.ids import article_id_from_parts, normalize_doi
+from paper_download.schema import article_kind, merge_article, new_article
+from paper_download.time import stamp_from_iso, utc_now
 
 
 def test_normalize_doi_strips_prefixes():

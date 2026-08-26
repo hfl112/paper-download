@@ -1,11 +1,11 @@
 ---
-name: paper-extract
+name: paper-download
 description: Build an auditable local collection of biomedical papers — search Europe PMC + PubMed, import by DOI/PMID, fetch structured full-text JSON and PDFs (open-access AND institutional/library via EZProxy/LibKey), then export BibTeX/RIS/CSV/JSONL. Use when the user wants to gather literature, build a paper/citation collection, pull full text for a set of DOIs/PMIDs, get PDFs behind a paywall through their university login, or prepare papers for downstream LLM/RAG extraction.
 ---
 
-# paper-extract
+# paper-download
 
-Drives the `paper-extract` CLI (an installable Python package) to build
+Drives the `paper-download` CLI (an installable Python package) to build
 reproducible, auditable literature collections. Each collection is a folder with
 `article.json` per paper, an `articles.csv` index, and a `logs/*.json` audit trail.
 
@@ -29,9 +29,10 @@ otherwise, decline the circumvention and offer the legitimate path.
 
 ## Prerequisites
 
-- The `paper-extract` package must be importable. Verify with `paper-extract --help`
-  (or `uv run paper-extract --help` from the project). Run the CLI in the same
-  environment where it was installed.
+- Two equivalent invocations. `python paper_download.py <command>` needs no install but
+  must run from the repo root (or use its absolute path). `paper-download <command>` is the
+  console script from `pip install`, and needs the environment it was installed into.
+  Verify with `python paper_download.py --help` (or `uv run python paper_download.py --help`).
 - Install if missing (uv recommended, no conda needed; run from the repo root):
   - `uv venv --python 3.11`, then `source .venv/bin/activate`, then
     `uv pip install ".[browser,pdf,llm]"` — engine + browser/PDF extras + LLM provider SDKs.
@@ -57,19 +58,19 @@ Then `fetch` full text, `status` to review, `collection export` to hand off.
 
 ```bash
 # Plan (deterministic):
-paper-extract search-plan --collection C --keyword A --keyword B --anchor A --no-llm
+python paper_download.py search-plan --collection C --keyword A --keyword B --anchor A --no-llm
 # Plan (LLM aliases + anchor/M-of-N; needs a provider key):
-paper-extract search-plan --collection C --prompt "…" --provider gemini
+python paper_download.py search-plan --collection C --prompt "…" --provider gemini
 
-paper-extract search --collection C --query '…' --max 30      # or omit --query to use current plan
-paper-extract collection import --collection C --input-doi 10.x/y --input-pmid 12345678
-paper-extract collection import --collection C --input file.csv        # or --input-json file.json
+python paper_download.py search --collection C --query '…' --max 30      # or omit --query to use current plan
+python paper_download.py collection import --collection C --input-doi 10.x/y --input-pmid 12345678
+python paper_download.py collection import --collection C --input file.csv        # or --input-json file.json
 
-paper-extract fetch --collection C --output-format json --access open  # --output-format REQUIRED
-paper-extract fetch --collection C --output-format both --access library --speed normal --limit 5
+python paper_download.py fetch --collection C --output-format json --access open  # --output-format REQUIRED
+python paper_download.py fetch --collection C --output-format both --access library --speed normal --limit 5
 
-paper-extract status --collection C
-paper-extract collection export --collection C --to bib   # bib | ris | csv | jsonl
+python paper_download.py status --collection C
+python paper_download.py collection export --collection C --to bib   # bib | ris | csv | jsonl
 ```
 
 ## Rules that matter
@@ -101,12 +102,12 @@ Login is INTERACTIVE and is the USER's job. **Never try to log in for them** —
 SSO / captcha / 2FA / school policy are theirs to handle in their own browser.
 
 Agent flow for `--access library`:
-1. Run `paper-extract library doctor` (read-only, never opens a browser). If it
-   reports NOT READY, STOP and tell the user to run `paper-extract library login`
+1. Run `python paper_download.py library doctor` (read-only, never opens a browser). If it
+   reports NOT READY, STOP and tell the user to run `python paper_download.py library login`
    in **their own terminal** (it opens a browser and waits for Enter), then
    continue once they confirm.
 2. When ready, batch-fetch non-interactively:
-   `paper-extract fetch --collection C --output-format both --access library --non-interactive`
+   `python paper_download.py fetch --collection C --output-format both --access library --non-interactive`
    `--non-interactive` never opens a login prompt: it reuses the session the user
    established and fails fast (per article, on a login page) instead of hanging.
    In a real TTY you may omit it — fetch then opens the login browser once itself.

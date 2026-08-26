@@ -113,12 +113,12 @@ def doctor() -> dict:
                 "next_action": 'install browser support: pip install ".[browser]"', "checks": checks}
     if not (suffix or tmpl):
         return {"ready": False, "reason": "missing_proxy_suffix",
-                "next_action": "run: paper-extract library login", "checks": checks}
+                "next_action": "run: python paper_download.py library login", "checks": checks}
     if not profile_exists:
         return {"ready": False, "reason": "needs_login",
-                "next_action": "run: paper-extract library login", "checks": checks}
+                "next_action": "run: python paper_download.py library login", "checks": checks}
     return {"ready": True, "reason": "ready",
-            "next_action": "run: paper-extract fetch --access library",
+            "next_action": "run: python paper_download.py fetch --access library",
             "checks": checks,
             "note": "static readiness only; session liveness is confirmed at fetch time"}
 
@@ -777,7 +777,7 @@ def library_login(landing_url: str | None = None, proxy_login_url: str | None = 
             print("未嗅探到代理后缀（可能你不是 EZProxy，或本次没打开付费全文）。")
             print("若确有全文,请重跑并【务必点开一次付费文章全文】后再按回车。")
         print("现在可以运行：")
-        print("  paper-extract fetch --collection <name> --output-format both --access library")
+        print("  python paper_download.py fetch --collection <name> --output-format both --access library")
         return True
     finally:
         try:

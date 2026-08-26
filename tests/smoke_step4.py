@@ -32,7 +32,7 @@ def run_cli(*args: str, env_extra: dict | None = None) -> subprocess.CompletedPr
         env.pop(k, None)
     if env_extra:
         env.update(env_extra)
-    return subprocess.run([sys.executable, "-m", "paper_extract", *args],
+    return subprocess.run([sys.executable, "-m", "paper_download", *args],
                           cwd="/tmp", env=env, capture_output=True, text=True)
 
 

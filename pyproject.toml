@@ -3,13 +3,13 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "paper-extract"
+name = "paper-download"
 version = "0.1.0"
 description = "Build auditable local collections of biomedical papers — search, full-text (open + institutional), and citation export."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
-authors = [{ name = "paper-extract contributors" }]
+authors = [{ name = "paper-download contributors" }]
 keywords = ["bibliometrics", "pubmed", "europepmc", "fulltext", "literature", "biomedical", "ezproxy", "rag"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -29,15 +29,15 @@ llm = ["google-genai", "openai", "anthropic"]
 dev = ["pytest", "ruff", "mypy"]
 
 [project.urls]
-Homepage = "https://github.com/hfl112/paper-extract"
-Repository = "https://github.com/hfl112/paper-extract"
-Issues = "https://github.com/hfl112/paper-extract/issues"
+Homepage = "https://github.com/hfl112/paper-download"
+Repository = "https://github.com/hfl112/paper-download"
+Issues = "https://github.com/hfl112/paper-download/issues"
 
 [project.scripts]
-paper-extract = "paper_extract.cli:main"
+paper-download = "paper_download.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["paper_extract*", "llmclient*"]
+include = ["paper_download*", "llmclient*"]
 
 [tool.ruff]
 line-length = 120
@@ -60,11 +60,11 @@ ignore_missing_imports = true
 follow_imports = "silent"
 # Scoped to the well-typed modules for now; widen as types land elsewhere.
 files = [
-    "paper_extract/article.py",
-    "paper_extract/assemble.py",
-    "paper_extract/search/sources.py",
-    "paper_extract/export/common.py",
-    "paper_extract/links.py",
-    "paper_extract/paths.py",
-    "paper_extract/sources/search/_shared.py",
+    "paper_download/article.py",
+    "paper_download/assemble.py",
+    "paper_download/search/sources.py",
+    "paper_download/export/common.py",
+    "paper_download/links.py",
+    "paper_download/paths.py",
+    "paper_download/sources/search/_shared.py",
 ]

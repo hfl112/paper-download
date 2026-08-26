@@ -6,8 +6,8 @@ content (the sequence is no longer copy-pasted per route).
 """
 from __future__ import annotations
 
-from paper_extract import article as article_mod
-from paper_extract import assemble
+from paper_download import article as article_mod
+from paper_download import assemble
 
 _LONG = (
     "This body section is long enough for the extraction quality gate to treat it "

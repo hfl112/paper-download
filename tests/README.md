@@ -1,6 +1,6 @@
 # Tests
 
-All commands assume the Python environment where paper-extract is installed.
+All commands assume the Python environment where paper-download is installed.
 
 ## Offline (run automatically — no network, no API keys, no browser)
 
@@ -26,10 +26,10 @@ Run everything: `bash tests/run_all.sh`
 
    **LibKey mode** (for LibKey Nomad users — no SSO needed):
    ```bash
-   paper-extract library login --libkey     # loads your LibKey Nomad into the tool browser
+   python paper_download.py library login --libkey     # loads your LibKey Nomad into the tool browser
    #   In the window: click the LibKey icon, pick your library once; connect VPN if you normally do;
    #   confirm the article shows LibKey "Download PDF"; press Enter. Config and fingerprint persist in the profile.
-   paper-extract fetch --collection <name> --output-format both --access library --speed normal --limit 3
+   python paper_download.py fetch --collection <name> --output-format both --access library --speed normal --limit 3
    #   fetch opens each article's PubMed/DOI page, lets LibKey inject its link, follows it to the PDF,
    #   and parses it. EXPERIMENTAL: the LibKey link selectors may need tuning — if a fetch fails,
    #   check logs/fetch_*.json (reason like libkey_no_link / libkey_pdf_fetch_failed) and report it.
@@ -37,14 +37,14 @@ Run everything: `bash tests/run_all.sh`
 
    **SSO mode** (for "Access through your institution"):
    ```bash
-   paper-extract library login          # opens a paywalled article; log in via SSO, press Enter
-   paper-extract fetch --collection <name> --output-format both --access library --speed normal --limit 3
+   python paper_download.py library login          # opens a paywalled article; log in via SSO, press Enter
+   python paper_download.py fetch --collection <name> --output-format both --access library --speed normal --limit 3
    ```
 
    **Cookie-borrow mode** (best-effort; note plain requests is 403-blocked by Wiley/Elsevier, so this
    only helps when cloakbrowser injection suffices):
    ```bash
-   paper-extract library login --from-chrome     # approve the macOS Keychain prompt
+   python paper_download.py library login --from-chrome     # approve the macOS Keychain prompt
    ```
 
    Verify in all modes: after setup, a paywalled article's full text is reachable; `article.json`
@@ -59,10 +59,10 @@ Run everything: `bash tests/run_all.sh`
    ```bash
    pip install "./llmclient[all]"
    export GEMINI_API_KEY=...        # or OPENAI_API_KEY / DEEPSEEK_API_KEY / ANTHROPIC_API_KEY
-   python -m paper_extract search-plan \
+   python -m paper_download search-plan \
        --collection wgd --prompt "whole genome doubling in cancer" --provider gemini
    # or keyword mode with alias expansion + interactive confirm:
-   python -m paper_extract search-plan \
+   python -m paper_download search-plan \
        --collection wgd --keyword WGD --keyword cancer --anchor cancer
    ```
    Verify: real aliases generated (WGD → whole genome doubling, …), interactive add/delete works,

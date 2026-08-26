@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Step 1 smoke test: offline CLI end-to-end + CWD-independence.
 
-Runs `python -m paper_extract` from a DIFFERENT working directory (/tmp) to prove
+Runs `python -m paper_download` from a DIFFERENT working directory (/tmp) to prove
 that collections still resolve to the project's data/ root (paths.py fix), then
 checks that every command runs, logs are written, and expected files exist.
 
@@ -28,7 +28,7 @@ def run_cli(*args: str) -> subprocess.CompletedProcess:
 
     env = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT)}
     return subprocess.run(
-        [sys.executable, "-m", "paper_extract", *args],
+        [sys.executable, "-m", "paper_download", *args],
         cwd="/tmp",
         env=env,
         capture_output=True,

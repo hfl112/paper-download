@@ -9,10 +9,10 @@ Results / Discussion / Data availability / Code availability / Funding / Acknowl
 Conflicts of interest / … 凡是有标题的段落，标题作 key、正文作 value，存进「成长型文档」的
 sections 字典。不同杂志的标题不一样没关系，只要内容在就行。References 单列成 list。
 
-仅依赖 Python 标准库，独立可移植。主流程通过 `paper_extract.fetch.runner`
+仅依赖 Python 标准库，独立可移植。主流程通过 `paper_download.fetch.runner`
 调用这里的函数：
 
-    from paper_extract.sources.fulltext.fulltext_fetcher import extract_fulltext
+    from paper_download.sources.fulltext.fulltext_fetcher import extract_fulltext
     doc = extract_fulltext("PMC13176527", base=article_metadata)
 
     # 拆开用
@@ -21,7 +21,7 @@ sections 字典。不同杂志的标题不一样没关系，只要内容在就�
     doc = build_doc(pmcid, parsed, base, provenance)
 
     # 校验某篇质量（分层）：fetch/parse/quality_status + issues/warnings
-    from paper_extract.sources.fulltext.fulltext_fetcher import check_extraction, quality_block
+    from paper_download.sources.fulltext.fulltext_fetcher import check_extraction, quality_block
     quality_block(doc)
 """
 
@@ -55,8 +55,8 @@ def _attr_href(el: ET.Element) -> str:
 
 EFETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 PMC_HTML_URL = "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{num}/"
-USER_AGENT = "paper-extract/step2 (literature ETL)"
-BROWSER_UA = "Mozilla/5.0 (compatible; paper-extract/step2)"
+USER_AGENT = "paper-download/step2 (literature ETL)"
+BROWSER_UA = "Mozilla/5.0 (compatible; paper-download/step2)"
 
 
 def load_env(filename: str = ".env") -> None:

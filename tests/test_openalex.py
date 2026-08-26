@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from paper_extract.search.sources import DEFAULT_SOURCES, select_sources
-from paper_extract.sources.search import openalex_fetcher
+from paper_download.search.sources import DEFAULT_SOURCES, select_sources
+from paper_download.sources.search import openalex_fetcher
 
 _FIXTURE = Path(__file__).parent / "fixtures" / "openalex_works.json"
 

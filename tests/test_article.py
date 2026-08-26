@@ -5,7 +5,7 @@ Covers the state transitions and queries, plus a golden snapshot of new_article
 """
 from __future__ import annotations
 
-from paper_extract import article
+from paper_download import article
 
 # --- golden schema snapshot (updated_at normalized) -------------------------
 

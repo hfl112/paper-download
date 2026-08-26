@@ -23,9 +23,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from paper_extract.collection import CollectionStore  # noqa: E402
-from paper_extract.links import mark_sensitive_links  # noqa: E402
-from paper_extract.schema import new_article  # noqa: E402
+from paper_download.collection import CollectionStore  # noqa: E402
+from paper_download.links import mark_sensitive_links  # noqa: E402
+from paper_download.schema import new_article  # noqa: E402
 
 COLLECTION = "smoke_step5"
 COLL_DIR = PROJECT_ROOT / "data" / "collections" / COLLECTION
@@ -35,7 +35,7 @@ SENSITIVE = "https://link-springer-com.libproxy.myuni.edu/article/x"
 
 def run_cli(*args: str) -> subprocess.CompletedProcess:
     env = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT)}
-    return subprocess.run([sys.executable, "-m", "paper_extract", *args],
+    return subprocess.run([sys.executable, "-m", "paper_download", *args],
                           cwd="/tmp", env=env, capture_output=True, text=True)
 
 

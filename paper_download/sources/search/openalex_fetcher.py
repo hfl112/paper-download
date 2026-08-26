@@ -16,9 +16,9 @@ from typing import Dict, List, Optional
 from ._shared import doc_key, retry_get
 
 BASE_URL = "https://api.openalex.org/works"
-USER_AGENT = "paper-extract/1.0 (literature review tool)"
+USER_AGENT = "paper-download/1.0 (literature review tool)"
 # Polite-pool contact (also used by the fulltext layer); neutral default.
-EMAIL = os.environ.get("PAPER_EXTRACT_EMAIL") or "paper-extract@example.com"
+EMAIL = os.environ.get("PAPER_DOWNLOAD_EMAIL") or os.environ.get("PAPER_EXTRACT_EMAIL") or "paper-download@example.com"
 PER_PAGE = 200  # OpenAlex per-page cap
 
 

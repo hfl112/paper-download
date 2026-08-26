@@ -4,22 +4,22 @@ Getting paywalled full text is interactive (the user logs in once) and depends o
 how their institution grants access. Nothing is hardcoded — the EZProxy suffix is
 auto-detected from the login session and stored in `data/library.json`.
 
-Requires `pip install "paper-extract[browser]"` (cloakbrowser). Run the CLI in the
-Python environment where paper-extract is installed.
+Requires `pip install "paper-download[browser]"` (cloakbrowser). Run the CLI in the
+Python environment where paper-download is installed.
 
 ## Setup decision tree (do this once)
 
 Ask the user how they normally read paywalled papers, then pick a `library login` mode:
 
 1. **They use a LibKey Nomad browser extension** (macOS + Chrome) →
-   `paper-extract library login`  (auto-loads LibKey Nomad if installed; use --no-libkey to skip)
+   `python paper_download.py library login`  (auto-loads LibKey Nomad if installed; use --no-libkey to skip)
    Loads their LibKey extension into the tool browser. Tell them to: pick their
    library in the LibKey icon (once), connect VPN if they normally do, click LibKey
    "Download PDF" to open one full text, then press Enter. This makes the session
    live AND lets the proxy suffix auto-detect.
 
 2. **They click "Access through your institution" / OpenAthens (SSO)** →
-   `paper-extract library login`
+   `python paper_download.py library login`
    Opens a paywalled article; they log in via SSO, open the full text, press Enter.
 
 3. **Pure EZProxy portal** → same as (2); can also pass
@@ -39,9 +39,9 @@ the same browser profile so challenge-clearance cookies remain valid.
 For automated (agent) use, never run `library login` yourself. Instead:
 
 ```bash
-paper-extract library doctor           # read-only; add --json for machine output
-# if NOT READY -> stop and ask the user to run `paper-extract library login`
-paper-extract fetch --collection C --output-format both --access library --non-interactive
+python paper_download.py library doctor           # read-only; add --json for machine output
+# if NOT READY -> stop and ask the user to run `python paper_download.py library login`
+python paper_download.py fetch --collection C --output-format both --access library --non-interactive
 ```
 
 `--non-interactive` (also auto-selected when there's no TTY) never opens a login
@@ -52,7 +52,7 @@ is confirmed at fetch time.
 ## Fetching: "log in once → batch many"
 
 ```bash
-paper-extract fetch --collection C --output-format both --access library --speed normal
+python paper_download.py fetch --collection C --output-format both --access library --speed normal
 ```
 
 What happens:

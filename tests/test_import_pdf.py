@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from paper_extract.collection import importer
-from paper_extract.collection.store import CollectionStore
+from paper_download.collection import importer
+from paper_download.collection.store import CollectionStore
 
 
 def _has_pymupdf() -> bool:
@@ -98,7 +98,7 @@ def test_extract_pdf_seed_reads_doi_with_pymupdf(tmp_path):
 @pytest.fixture
 def store(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        "paper_extract.collection.store.collections_root", lambda: tmp_path / "collections"
+        "paper_download.collection.store.collections_root", lambda: tmp_path / "collections"
     )
     return CollectionStore.open("t")
 

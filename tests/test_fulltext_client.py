@@ -6,7 +6,7 @@ adapter. No test here touches urllib.
 """
 from __future__ import annotations
 
-from paper_extract.sources.fulltext import fulltext_sources as fs
+from paper_download.sources.fulltext import fulltext_sources as fs
 
 _BODY_PARA = (
     "This introduction describes, at length and entirely for the purposes of an "

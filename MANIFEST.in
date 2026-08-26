@@ -1,5 +1,5 @@
 # Files to include in the source distribution (sdist).
-include README.md README.zh-CN.md LICENSE .env.example
+include README.md README.zh-CN.md LICENSE .env.example paper_download.py
 recursive-include skill *.md
 recursive-include skill *.yaml
 recursive-include tests *.py *.md *.sh

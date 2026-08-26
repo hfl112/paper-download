@@ -1,19 +1,19 @@
-# paper-extract
+# paper-download
 
 **Auditable literature collections for biomedical LLM/RAG workflows.**
 
-[![CI](https://github.com/hfl112/paper-extract/actions/workflows/ci.yml/badge.svg)](https://github.com/hfl112/paper-extract/actions/workflows/ci.yml)
+[![CI](https://github.com/hfl112/paper-download/actions/workflows/ci.yml/badge.svg)](https://github.com/hfl112/paper-download/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 [![Tests](https://img.shields.io/badge/offline%20tests-75%20passing-brightgreen.svg)](tests/)
-[![Agent Skill](https://img.shields.io/badge/agent%20skill-included-8A2BE2.svg)](skill/paper-extract/SKILL.md)
+[![Agent Skill](https://img.shields.io/badge/agent%20skill-included-8A2BE2.svg)](skill/paper-download/SKILL.md)
 
 **English** · [中文](README.zh-CN.md)
 
 Turn a PubMed / Europe PMC query, a DOI list, a PMID list, or a CSV into a
 **local, reproducible paper collection**: metadata, structured full-text JSON,
 optional PDFs, citation exports, and command logs. Unlike a plain PDF parser,
-`paper-extract` keeps the whole literature workflow auditable — so the result
+`paper-download` keeps the whole literature workflow auditable — so the result
 is a dataset you can hand to an LLM/RAG pipeline, a systematic review, or a
 grant background, and still trace every paper back to how it got there.
 
@@ -39,19 +39,19 @@ One query in, one auditable folder out. This is a **real run** (search →
 fetch open-access full text → status → export), not a mock-up:
 
 ```console
-$ paper-extract search --collection pptp-demo \
+$ python paper_download.py search --collection pptp-demo \
     --query 'pediatric preclinical testing program AND "drug response"' --max 8
 Europe PMC : 7
 PubMed     : 6
 overlap    : 0
 → 13 articles added
 
-$ paper-extract fetch --collection pptp-demo --output-format json --access open
+$ python paper_download.py fetch --collection pptp-demo --output-format json --access open
 Fetching: 13 to fetch, 0 already done (skipped)  [output-format=json, access=open]
   ...
 Done. ok=7 fail=6 / 13 attempted (0 already done).
 
-$ paper-extract status --collection pptp-demo
+$ python paper_download.py status --collection pptp-demo
 Collection: pptp-demo
 Articles: 13
 Metadata available: 13
@@ -62,7 +62,7 @@ Quality: {'unknown': 6, 'pass': 6, 'weak': 1}
 Sources: {'fulltext:pmc_xml': 7}
 Failed/incomplete articles: 6
 
-$ paper-extract collection export --collection pptp-demo --to bib
+$ python paper_download.py collection export --collection pptp-demo --to bib
 Wrote export: pptp-demo.bib
 ```
 
@@ -131,17 +131,17 @@ body trimmed):
 - Mass-downloading publisher content.
 - Being a general-purpose scanned-PDF OCR tool.
 
-`paper-extract` only ever uses **your own valid credentials**, stores none of
+`paper-download` only ever uses **your own valid credentials**, stores none of
 them, and asks you to respect publisher terms — see [Responsible use](#responsible-use).
 
-## Why paper-extract
+## Why paper-download
 
 **A. Reproducible literature collections.** One paper = one `article.json`, one
 collection = one folder, every command = a `logs/*.json` entry. You can read,
 diff, version, and audit the whole thing with ordinary tools.
 
 **B. Full text first, not just metadata.** Many tools stop at citations.
-`paper-extract` fetches structured full-text JSON (and optional PDFs), with a
+`paper-download` fetches structured full-text JSON (and optional PDFs), with a
 per-article quality check (`body_chars`, `section_count`, issues) so you know
 what you actually got.
 
@@ -154,7 +154,7 @@ links are flagged `sensitive` and stripped from every export.
 papers" — it's turning literature into a collection an LLM can reliably process.
 JSONL export is RAG-ready.
 
-**E. Agent skill included.** Ships with a [Skill](skill/paper-extract/SKILL.md)
+**E. Agent skill included.** Ships with a [Skill](skill/paper-download/SKILL.md)
 that teaches AI coding agents (Claude Code, Codex, …) to drive the whole
 pipeline from plain language.
 
@@ -163,23 +163,27 @@ pipeline from plain language.
 ### Users
 
 ```bash
-pip install "paper-extract[browser,pdf,llm] @ git+https://github.com/hfl112/paper-extract.git"
-paper-extract --help
+pip install "paper-download[browser,pdf,llm] @ git+https://github.com/hfl112/paper-download.git"
+paper-download --help
 ```
 
 (Drop the `[browser,pdf,llm]` extras for a core-only install — search, open-access
 full text, and exports work without them.) PyPI release is planned.
 
+Two ways to invoke, same CLI: `python paper_download.py <command>` from a clone (no
+install step), or the `paper-download` command that `pip install` puts on your PATH.
+The examples below use the launcher.
+
 ### Developers
 
 ```bash
-git clone https://github.com/hfl112/paper-extract.git
-cd paper-extract
+git clone https://github.com/hfl112/paper-download.git
+cd paper-download
 uv venv --python 3.11                 # creates .venv (downloads Python if needed)
 source .venv/bin/activate             # IMPORTANT: activate first — with a conda env
                                       # active, `uv pip` would install into conda, not .venv
 uv pip install ".[browser,pdf,llm,dev]"
-paper-extract --help
+python paper_download.py --help
 ```
 
 Then copy `.env.example` to `.env` and fill in what you use (all optional; see
@@ -189,28 +193,28 @@ Then copy `.env.example` to `.env` and fill in what you use (all optional; see
 
 ```bash
 # 1. gather papers (Europe PMC + PubMed)
-paper-extract search --collection demo --query 'pediatric preclinical testing program AND "drug response"' --max 20
+python paper_download.py search --collection demo --query 'pediatric preclinical testing program AND "drug response"' --max 20
 #    author search:   --query 'AUTH:"Houghton PJ" AND AUTH:"Smith MA"'
-#    by identifiers:  paper-extract collection import --collection demo --input-doi 10.1002/pbc.21508
+#    by identifiers:  python paper_download.py collection import --collection demo --input-doi 10.1002/pbc.21508
 
 # 2. fetch full text (open access)
-paper-extract fetch --collection demo --output-format json --access open
+python paper_download.py fetch --collection demo --output-format json --access open
 
 # 3. review & export
-paper-extract status --collection demo
-paper-extract collection export --collection demo --to bib   # bib | ris | csv | jsonl
+python paper_download.py status --collection demo
+python paper_download.py collection export --collection demo --to bib   # bib | ris | csv | jsonl
 ```
 
 ## Institutional / library full text
 
-For paywalled papers, `paper-extract` reuses your university access through a
+For paywalled papers, `paper-download` reuses your university access through a
 real browser ([cloakbrowser](https://pypi.org/project/cloakbrowser/)). Set up
 once, then batch-fetch:
 
 ```bash
-paper-extract library login --libkey     # LibKey Nomad users (macOS + Chrome)
-paper-extract library login              # "Access through your institution" (SSO)
-paper-extract fetch --collection demo --output-format both --access library --speed normal
+python paper_download.py library login --libkey     # LibKey Nomad users (macOS + Chrome)
+python paper_download.py library login              # "Access through your institution" (SSO)
+python paper_download.py fetch --collection demo --output-format both --access library --speed normal
 ```
 
 How it works:
@@ -224,7 +228,7 @@ How it works:
 - The proxy domain is **auto-detected from your session**; nothing is hardcoded
   to any school. Use `--speed normal`/`slow` if a publisher keeps challenging.
 
-See [`skill/paper-extract/references/library-access.md`](skill/paper-extract/references/library-access.md)
+See [`skill/paper-download/references/library-access.md`](skill/paper-download/references/library-access.md)
 for the full decision tree and troubleshooting.
 
 ## The Skill (for AI agents)
@@ -234,11 +238,11 @@ The Skill and the CLI are separate. Install both.
 First install the CLI:
 
 ```bash
-uv tool install "paper-extract[browser,pdf,llm] @ git+https://github.com/hfl112/paper-extract.git"
+uv tool install "paper-download[browser,pdf,llm] @ git+https://github.com/hfl112/paper-download.git"
 ```
 
 Then install the Skill:
-```skillshare install hfl112/paper-extract/skill/paper-extract
+```skillshare install hfl112/paper-download/skill/paper-download
 skillshare sync
 ```
 
@@ -254,7 +258,7 @@ Copy `.env.example` → `.env` (all optional):
 
 | Variable | Purpose |
 |---|---|
-| `PAPER_EXTRACT_EMAIL` | Unpaywall / NCBI politeness email |
+| `PAPER_DOWNLOAD_EMAIL` | Unpaywall / NCBI politeness email |
 | `NCBI_API_KEY` | faster PubMed / PMC |
 | `SPRINGER_OA_API_KEY`, `ELSEVIER_API_KEY`, `WILEY_TDM_TOKEN`, `CORE_API_KEY` | publisher OA full text |
 | `LLM_PROVIDER` + `GEMINI_API_KEY` / `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` / `ANTHROPIC_API_KEY` | LLM search plans |
@@ -262,9 +266,9 @@ Copy `.env.example` → `.env` (all optional):
 ## What's in this repo
 
 ```text
-paper_extract/   pyproject.toml   # the engine (CLI + library)
+paper_download/   pyproject.toml   # the engine (CLI + library)
 llmclient/                        # provider-agnostic LLM client (bundled)
-skill/paper-extract/              # the agent Skill (SKILL.md + references)
+skill/paper-download/              # the agent Skill (SKILL.md + references)
 tests/                            # offline unit + smoke tests (75 checks)
 ```
 

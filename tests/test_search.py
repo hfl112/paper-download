@@ -9,15 +9,15 @@ import json
 
 import pytest
 
-from paper_extract.collection.store import CollectionStore
-from paper_extract.search.runner import run_search
-from paper_extract.search.sources import merge_results
+from paper_download.collection.store import CollectionStore
+from paper_download.search.runner import run_search
+from paper_download.search.sources import merge_results
 
 
 @pytest.fixture
 def store(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        "paper_extract.collection.store.collections_root", lambda: tmp_path / "collections"
+        "paper_download.collection.store.collections_root", lambda: tmp_path / "collections"
     )
     return CollectionStore.open("s")
 

@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import json
 
-import paper_extract.library.config as config
-from paper_extract.sources.fulltext import library_download
+import paper_download.library.config as config
+from paper_download.sources.fulltext import library_download
 
 
 def _point_config_at(tmp_path, monkeypatch):
@@ -71,7 +71,7 @@ def test_to_proxy_url_uses_configured_suffix():
 def test_doctor_reports_needs_login_without_config(tmp_path, monkeypatch):
     # No proxy_suffix / profile -> not ready, with actionable next step (no browser opened).
     _point_config_at(tmp_path, monkeypatch)
-    import paper_extract.library.browser as browser
+    import paper_download.library.browser as browser
     monkeypatch.setattr(browser, "_profile_dir", lambda: str(tmp_path / "profile"))
     d = browser.doctor()
     assert d["ready"] is False
@@ -81,9 +81,9 @@ def test_doctor_reports_needs_login_without_config(tmp_path, monkeypatch):
 
 def test_prepare_session_non_interactive_fails_fast_when_not_ready(tmp_path, monkeypatch):
     _point_config_at(tmp_path, monkeypatch)
-    import paper_extract.library.browser as browser
+    import paper_download.library.browser as browser
     monkeypatch.setattr(browser, "_profile_dir", lambda: str(tmp_path / "profile"))
-    import paper_extract.library as library
+    import paper_download.library as library
     ok, msg = library.prepare_session(interactive=False)
     assert ok is False
     assert "not ready" in msg and "cannot log in for you" in msg
@@ -94,7 +94,7 @@ def test_collect_pdf_urls_uses_citation_pdf_url(tmp_path, monkeypatch):
     # the page's <meta citation_pdf_url>, proxied so it stays in-session.
     _point_config_at(tmp_path, monkeypatch)
     config.save_config({"proxy_suffix": "libproxy.myuni.edu"})
-    import paper_extract.library.browser as browser
+    import paper_download.library.browser as browser
     html = ('<html><head><meta name="citation_pdf_url" '
             'content="https://aacrjournals.org/mct/article-pdf/1/2/3/x.pdf"></head></html>')
     urls = browser._collect_pdf_urls(html, "https://aacrjournals-org.libproxy.myuni.edu/mct/article/1",
@@ -103,7 +103,7 @@ def test_collect_pdf_urls_uses_citation_pdf_url(tmp_path, monkeypatch):
 
 
 def test_collect_pdf_urls_empty_without_meta_or_known_publisher():
-    import paper_extract.library.browser as browser
+    import paper_download.library.browser as browser
     # No citation_pdf_url meta and a publisher we have no guessed path for -> no candidates.
     assert browser._collect_pdf_urls("<html></html>", "https://x", "10.1158/xxx") == []
 
@@ -111,7 +111,7 @@ def test_collect_pdf_urls_empty_without_meta_or_known_publisher():
 def test_browser_module_imports_without_cloakbrowser():
     # Must import even when cloakbrowser is absent (all lazy). Do NOT launch a
     # browser here — _get_context() would spawn a real profile as a side effect.
-    import paper_extract.library.browser as browser
+    import paper_download.library.browser as browser
     assert callable(browser.fetch_json_library)
     assert callable(browser.begin_live_session)
     assert callable(browser.library_login)

@@ -1,17 +1,17 @@
-# paper-extract
+# paper-download
 
 **面向生物医学 LLM/RAG 的可审计本地文献库工具。**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 [![Tests](https://img.shields.io/badge/offline%20tests-75%20passing-brightgreen.svg)](tests/)
-[![Agent Skill](https://img.shields.io/badge/agent%20skill-included-8A2BE2.svg)](skill/paper-extract/SKILL.md)
+[![Agent Skill](https://img.shields.io/badge/agent%20skill-included-8A2BE2.svg)](skill/paper-download/SKILL.md)
 
 [English](README.md) · **中文**
 
 把一条 PubMed / Europe PMC 查询、一份 DOI 列表、一份 PMID 列表或一个 CSV，变成
 **本地、可复现的文献收藏库**：元数据、结构化全文 JSON、可选 PDF、引文导出，以及
-命令日志。和单纯的 PDF 提取器不同，`paper-extract` 让整条文献工作流**可审计**——
+命令日志。和单纯的 PDF 提取器不同，`paper-download` 让整条文献工作流**可审计**——
 最终产出是一个能直接喂给 LLM/RAG 流水线、系统综述、基金背景调研的数据集，而且每
 一篇文献都能追溯到它是怎么进来的。
 
@@ -37,19 +37,19 @@ flowchart LR
 查看状态 → 导出），不是示意：
 
 ```console
-$ paper-extract search --collection pptp-demo \
+$ python paper_download.py search --collection pptp-demo \
     --query 'pediatric preclinical testing program AND "drug response"' --max 8
 Europe PMC : 7
 PubMed     : 6
 overlap    : 0
 → 13 articles added
 
-$ paper-extract fetch --collection pptp-demo --output-format json --access open
+$ python paper_download.py fetch --collection pptp-demo --output-format json --access open
 Fetching: 13 to fetch, 0 already done (skipped)  [output-format=json, access=open]
   ...
 Done. ok=7 fail=6 / 13 attempted (0 already done).
 
-$ paper-extract status --collection pptp-demo
+$ python paper_download.py status --collection pptp-demo
 Collection: pptp-demo
 Articles: 13
 Metadata available: 13
@@ -60,7 +60,7 @@ Quality: {'unknown': 6, 'pass': 6, 'weak': 1}
 Sources: {'fulltext:pmc_xml': 7}
 Failed/incomplete articles: 6
 
-$ paper-extract collection export --collection pptp-demo --to bib
+$ python paper_download.py collection export --collection pptp-demo --to bib
 Wrote export: pptp-demo.bib
 ```
 
@@ -125,15 +125,15 @@ data/collections/pptp-demo/
 - 海量下载出版社内容。
 - 当通用扫描件 OCR 工具。
 
-`paper-extract` 只使用**你自己的有效账号**、不保存任何凭证，并要求你遵守出版商条
+`paper-download` 只使用**你自己的有效账号**、不保存任何凭证，并要求你遵守出版商条
 款——见[合理使用](#合理使用)。
 
-## 为什么用 paper-extract
+## 为什么用 paper-download
 
 **A. 可复现的文献收藏库。** 一篇文献一个 `article.json`、一个收藏库一个文件夹、
 每条命令一条 `logs/*.json`。整套东西都能用普通工具读、diff、版本管理、审计。
 
-**B. 全文优先，不止元数据。** 很多工具止步于引文。`paper-extract` 抓结构化全文
+**B. 全文优先，不止元数据。** 很多工具止步于引文。`paper-download` 抓结构化全文
 JSON（和可选 PDF），并逐篇做质量检查（`body_chars`、`section_count`、issues），
 让你知道实际拿到了什么。
 
@@ -144,7 +144,7 @@ JSON（和可选 PDF），并逐篇做质量检查（`body_chars`、`section_cou
 **D. 为下游 LLM/RAG 抽取而生。** 重点不是"下载论文"，而是把文献变成 LLM 能可靠
 处理的收藏库。JSONL 导出可直接用于 RAG。
 
-**E. 内置 Agent Skill。** 附带 [Skill](skill/paper-extract/SKILL.md)，教 AI 编程
+**E. 内置 Agent Skill。** 附带 [Skill](skill/paper-download/SKILL.md)，教 AI 编程
 助手（Claude Code、Codex 等）用自然语言驱动整条流水线。
 
 ## 安装
@@ -152,23 +152,26 @@ JSON（和可选 PDF），并逐篇做质量检查（`body_chars`、`section_cou
 ### 普通用户
 
 ```bash
-pip install "paper-extract[browser,pdf,llm] @ git+https://github.com/hfl112/paper-extract.git"
-paper-extract --help
+pip install "paper-download[browser,pdf,llm] @ git+https://github.com/hfl112/paper-download.git"
+paper-download --help
 ```
 
 （去掉 `[browser,pdf,llm]` 就是仅核心安装——检索、开放获取全文、导出都不需要它们。）
 PyPI 发布在计划中。
 
+两种调用方式，CLI 完全相同：在克隆目录里 `python paper_download.py <command>`（无需安装），
+或 `pip install` 装到 PATH 上的 `paper-download` 命令。下面的示例都用 launcher 形式。
+
 ### 开发者
 
 ```bash
-git clone https://github.com/hfl112/paper-extract.git
-cd paper-extract
+git clone https://github.com/hfl112/paper-download.git
+cd paper-download
 uv venv --python 3.11                 # 创建 .venv(需要时自动下载 Python)
 source .venv/bin/activate             # 重要:先激活!若终端里有激活的 conda 环境,
                                       # 不激活直接 uv pip install 会装进 conda 而不是 .venv
 uv pip install ".[browser,pdf,llm,dev]"
-paper-extract --help
+python paper_download.py --help
 ```
 
 然后把 `.env.example` 复制为 `.env`，按需填写（全部可选，见[配置](#配置)）。
@@ -177,28 +180,28 @@ paper-extract --help
 
 ```bash
 # 1. 收集文献(Europe PMC + PubMed)
-paper-extract search --collection demo --query 'pediatric preclinical testing program AND "drug response"' --max 20
+python paper_download.py search --collection demo --query 'pediatric preclinical testing program AND "drug response"' --max 20
 #    按作者检索:   --query 'AUTH:"Houghton PJ" AND AUTH:"Smith MA"'
-#    按标识符导入: paper-extract collection import --collection demo --input-doi 10.1002/pbc.21508
+#    按标识符导入: python paper_download.py collection import --collection demo --input-doi 10.1002/pbc.21508
 
 # 2. 抓取全文(开放获取)
-paper-extract fetch --collection demo --output-format json --access open
+python paper_download.py fetch --collection demo --output-format json --access open
 
 # 3. 查看与导出
-paper-extract status --collection demo
-paper-extract collection export --collection demo --to bib   # bib | ris | csv | jsonl
+python paper_download.py status --collection demo
+python paper_download.py collection export --collection demo --to bib   # bib | ris | csv | jsonl
 ```
 
 ## 机构 / 图书馆全文
 
-对付费墙文献，`paper-extract` 通过真实浏览器
+对付费墙文献，`paper-download` 通过真实浏览器
 （[cloakbrowser](https://pypi.org/project/cloakbrowser/)）复用你的高校访问权限。
 配置一次，批量抓取：
 
 ```bash
-paper-extract library login --libkey     # LibKey Nomad 用户(macOS + Chrome)
-paper-extract library login              # "Access through your institution"(SSO)
-paper-extract fetch --collection demo --output-format both --access library --speed normal
+python paper_download.py library login --libkey     # LibKey Nomad 用户(macOS + Chrome)
+python paper_download.py library login              # "Access through your institution"(SSO)
+python paper_download.py fetch --collection demo --output-format both --access library --speed normal
 ```
 
 工作方式：
@@ -213,13 +216,13 @@ paper-extract fetch --collection demo --output-format both --access library --sp
   `--speed normal`/`slow`。
 
 完整决策树与排障见
-[`skill/paper-extract/references/library-access.md`](skill/paper-extract/references/library-access.md)。
+[`skill/paper-download/references/library-access.md`](skill/paper-download/references/library-access.md)。
 
 ## Skill（给 AI agent 用）
 
-[`skill/paper-extract/`](skill/paper-extract/) 教 AI 编程助手（Claude Code 等）
+[`skill/paper-download/`](skill/paper-download/) 教 AI 编程助手（Claude Code 等）
 何时、如何驱动这个 CLI——包括交互式图书馆登录流程。用
-[skillshare](https://github.com/runkids/skillshare) 安装（把 `skill/paper-extract/`
+[skillshare](https://github.com/runkids/skillshare) 安装（把 `skill/paper-download/`
 复制进你的 skills 目录后 `skillshare sync`），或直接把 agent 的 skills 目录指过
 来。然后用大白话下指令即可：
 
@@ -233,7 +236,7 @@ paper-extract fetch --collection demo --output-format both --access library --sp
 
 | 变量 | 用途 |
 |---|---|
-| `PAPER_EXTRACT_EMAIL` | Unpaywall / NCBI 礼貌邮箱 |
+| `PAPER_DOWNLOAD_EMAIL` | Unpaywall / NCBI 礼貌邮箱 |
 | `NCBI_API_KEY` | 加速 PubMed / PMC |
 | `SPRINGER_OA_API_KEY`、`ELSEVIER_API_KEY`、`WILEY_TDM_TOKEN`、`CORE_API_KEY` | 出版商 OA 全文 |
 | `LLM_PROVIDER` + `GEMINI_API_KEY` / `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` / `ANTHROPIC_API_KEY` | LLM 检索规划 |
@@ -241,9 +244,9 @@ paper-extract fetch --collection demo --output-format both --access library --sp
 ## 仓库结构
 
 ```text
-paper_extract/   pyproject.toml   # 引擎(CLI + 库)
+paper_download/   pyproject.toml   # 引擎(CLI + 库)
 llmclient/                        # 供应商无关的 LLM 客户端(随包捆绑)
-skill/paper-extract/              # agent Skill(SKILL.md + references)
+skill/paper-download/              # agent Skill(SKILL.md + references)
 tests/                            # 离线单元 + 冒烟测试(75 项检查)
 ```
 

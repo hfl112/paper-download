@@ -23,7 +23,7 @@ from ._shared import retry_get
 ESEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 EFETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 BATCH = 200                # 每次 efetch 取多少篇（XML 较大，保守取值）
-USER_AGENT = "paper-extract/1.0 (literature review tool)"
+USER_AGENT = "paper-download/1.0 (literature review tool)"
 
 
 def load_env(filename: str = ".env") -> None:

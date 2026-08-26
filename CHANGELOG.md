@@ -6,6 +6,21 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- **Renamed the project `paper-extract` -> `paper-download`.** The old name
+  collided with the sibling table-extraction tool; this one never extracts from
+  paper content, it searches, fetches and exports. Import package
+  `paper_extract` -> `paper_download`, console script `paper-extract` ->
+  `paper-download`, skill dir `skill/paper-extract` -> `skill/paper-download`.
+  Subcommands, flags and on-disk output are unchanged.
+- New launcher: `python paper_download.py <command>` runs the CLI from a clone
+  with no install step, matching the sibling tool's invocation style. The
+  `paper-download` console script from `pip install` still works.
+- HTTP `User-Agent` strings sent to Europe PMC / PubMed / OpenAlex / full-text
+  sources now say `paper-download`.
+- Environment variables renamed to `PAPER_DOWNLOAD_EMAIL` / `PAPER_DOWNLOAD_ROOT`;
+  the pre-rename `PAPER_EXTRACT_*` names are still honoured as a fallback.
+
 ### Added
 - **OpenAlex** as a third search source (default-on), extending coverage beyond
   biomedical to all disciplines (2.5M+ venues, no API key). Abstracts are
@@ -24,7 +39,7 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 - Internal architecture refactor — no change to CLI behavior or on-disk output:
   - The article schema and its state transitions now live in one **Article
-    module** (`paper_extract/article.py`); status values are defined once.
+    module** (`paper_download/article.py`); status values are defined once.
   - Full-text assembly (the flatten → build → quality → link-marking sequence)
     is shared by the open-access and institutional routes via one **assemble**
     module, removing duplicated code and an internal import cycle.
@@ -46,5 +61,5 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   EZProxy/LibKey), and BibTeX/RIS/CSV/JSONL export, with per-command audit logs.
 - Agent Skill for Claude Code / Codex-style agents.
 
-[Unreleased]: https://github.com/hfl112/paper-extract/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/hfl112/paper-extract/releases/tag/v0.1.0
+[Unreleased]: https://github.com/hfl112/paper-download/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/hfl112/paper-download/releases/tag/v0.1.0

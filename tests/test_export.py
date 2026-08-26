@@ -8,15 +8,15 @@ from __future__ import annotations
 
 import pytest
 
-from paper_extract import article as A
-from paper_extract.collection.store import CollectionStore
-from paper_extract.export import bib, csv_export, ris
+from paper_download import article as A
+from paper_download.collection.store import CollectionStore
+from paper_download.export import bib, csv_export, ris
 
 
 @pytest.fixture
 def store(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        "paper_extract.collection.store.collections_root", lambda: tmp_path / "collections"
+        "paper_download.collection.store.collections_root", lambda: tmp_path / "collections"
     )
     s = CollectionStore.open("golden")
     s.upsert_article(A.new_article({

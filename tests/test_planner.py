@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from paper_extract.search.planner import (
+from paper_download.search.planner import (
     _combine_blocks,
     _epmc_block,
     build_epmc_query,

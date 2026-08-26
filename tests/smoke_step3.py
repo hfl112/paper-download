@@ -9,7 +9,7 @@ those are handed off for manual testing. This checks everything that CAN run off
     FAST with actionable guidance (never hangs waiting for a human or a browser)
   * proxy_suffix is auto-captured to library.json and updated when it changes
 
-Uses an isolated PAPER_EXTRACT_ROOT so nothing touches real data/library.json.
+Uses an isolated PAPER_DOWNLOAD_ROOT so nothing touches real data/library.json.
 
 Usage:
     python tests/smoke_step3.py
@@ -29,9 +29,9 @@ COLLECTION = "smoke_step3"
 
 
 def run_cli(*args: str) -> subprocess.CompletedProcess:
-    env = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT), "PAPER_EXTRACT_ROOT": str(TMP_ROOT)}
+    env = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT), "PAPER_DOWNLOAD_ROOT": str(TMP_ROOT)}
     return subprocess.run(
-        [sys.executable, "-m", "paper_extract", *args],
+        [sys.executable, "-m", "paper_download", *args],
         cwd="/tmp", env=env, capture_output=True, text=True,
     )
 
@@ -50,10 +50,10 @@ def main() -> None:
     # 2. De-hardcoding: a fresh root has no institution baked in — proxy suffix and
     #    login template start empty. (Docs/comments may use libproxy.myuni.edu as an
     #    example; what matters is that no default value ships in the config.)
-    env = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT), "PAPER_EXTRACT_ROOT": str(TMP_ROOT)}
+    env = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT), "PAPER_DOWNLOAD_ROOT": str(TMP_ROOT)}
     r = subprocess.run(
         [sys.executable, "-c",
-         "import paper_extract.library.config as c;"
+         "import paper_download.library.config as c;"
          "print('FRESH', repr(c.get_proxy_suffix()), repr(c.get_login_url_template()))"],
         cwd="/tmp", env=env, capture_output=True, text=True)
     check("no institution hardcoded (fresh config is empty)",
@@ -80,14 +80,14 @@ def main() -> None:
 
     # 5. proxy_suffix auto-capture + update, written to library.json under temp root
     snippet = (
-        "import paper_extract.library.config as c;"
+        "import paper_download.library.config as c;"
         "c.set_login_url_template('https://libproxy.myuni.edu/login?url={target}');"
         "s,ch=c.update_proxy_suffix_from_session([{'name':'e','value':'1','domain':'.libproxy.myuni.edu'}],'');"
         "print('SUFFIX',s,ch);"
         "s2,ch2=c.update_proxy_suffix_from_session([{'name':'e','value':'1','domain':'.ezproxy.other.ac.uk'}],'');"
         "print('SUFFIX2',s2,ch2)"
     )
-    env = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT), "PAPER_EXTRACT_ROOT": str(TMP_ROOT)}
+    env = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT), "PAPER_DOWNLOAD_ROOT": str(TMP_ROOT)}
     r = subprocess.run([sys.executable, "-c", snippet], cwd="/tmp", env=env, capture_output=True, text=True)
     check("config snippet runs", r.returncode == 0, r.stderr)
     check("suffix auto-captured", "SUFFIX libproxy.myuni.edu True" in r.stdout, r.stdout)

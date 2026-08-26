@@ -28,4 +28,4 @@ jobs:
       - name: Unit tests (offline)
         run: pytest -q
       - name: Smoke tests (offline)
-        run: env -u PAPER_EXTRACT_ROOT bash tests/run_all.sh
+        run: env -u PAPER_DOWNLOAD_ROOT -u PAPER_EXTRACT_ROOT bash tests/run_all.sh

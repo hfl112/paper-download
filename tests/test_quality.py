@@ -1,7 +1,7 @@
 """Quality-check regressions for the HTML-extraction path."""
 from __future__ import annotations
 
-from paper_extract.sources.fulltext.fulltext_fetcher import quality_block
+from paper_download.sources.fulltext.fulltext_fetcher import quality_block
 
 
 def _doc(sections):

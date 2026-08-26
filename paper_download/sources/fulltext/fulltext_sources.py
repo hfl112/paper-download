@@ -5,7 +5,7 @@
 走哪条源、按什么优先级兜底、抓取/解析/组装/质检。所有源共享一份 http_get（按 host
 自动限速）与一份路由逻辑——消灭散落在各脚本里的 http_get / 限速常量 / DOI 路由重复。
 
-    from paper_extract.sources.fulltext.fulltext_sources import get_fulltext
+    from paper_download.sources.fulltext.fulltext_sources import get_fulltext
     doc, reason = get_fulltext(paper)          # paper 带 doi/pmid/pmcid(+step1 元数据作底座)
     #   成功 → (成长型文档 dict, "")；拿不到 → (None, 失败原因)
 
@@ -49,9 +49,9 @@ from .fulltext_fetcher import (
 
 load_env()
 NCBI_KEY = os.environ.get("NCBI_API_KEY", "")
-BROWSER_UA = "Mozilla/5.0 (compatible; paper-extract/fulltext)"
+BROWSER_UA = "Mozilla/5.0 (compatible; paper-download/fulltext)"
 # Unpaywall/NCBI politeness email — configurable, neutral default (no personal data shipped).
-EMAIL = os.environ.get("PAPER_EXTRACT_EMAIL") or os.environ.get("UNPAYWALL_EMAIL") or "paper-extract@example.com"
+EMAIL = os.environ.get("PAPER_DOWNLOAD_EMAIL") or os.environ.get("PAPER_EXTRACT_EMAIL") or os.environ.get("UNPAYWALL_EMAIL") or "paper-download@example.com"
 SPRINGER_PREFIXES = ("10.1007", "10.1038", "10.1186")
 WILEY_PREFIXES = ("10.1002", "10.1111", "10.1046", "10.1113")  # Wiley/Blackwell 主前缀
 

@@ -1,7 +1,7 @@
 """Open-access fetch routes.
 
 Thin: each entry point fetches content via the source engine, then hands off to
-the shared assembler (paper_extract.assemble) for the flatten → build → quality
+the shared assembler (paper_download.assemble) for the flatten → build → quality
 → mark-links sequence. The article↔flat translation and identity checks live in
 that assembler, not here.
 """

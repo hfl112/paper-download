@@ -12,11 +12,11 @@ def project_root() -> Path:
     """Resolve the project root independent of the current working directory.
 
     Priority:
-    1. PAPER_EXTRACT_ROOT environment variable, if set.
+    1. PAPER_DOWNLOAD_ROOT (or the pre-rename PAPER_EXTRACT_ROOT) environment variable, if set.
     2. Nearest ancestor of this file that contains a marker (pyproject.toml).
     3. Fallback to the package parent directory.
     """
-    env = os.environ.get("PAPER_EXTRACT_ROOT")
+    env = os.environ.get("PAPER_DOWNLOAD_ROOT") or os.environ.get("PAPER_EXTRACT_ROOT")
     if env:
         return Path(env).expanduser().resolve()
     here = Path(__file__).resolve()

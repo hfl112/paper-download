@@ -6,7 +6,7 @@ that DOI (like the bioRxiv adapter keys on 10.1101). No network here.
 """
 from __future__ import annotations
 
-from paper_extract.sources.fulltext import fulltext_sources as fs
+from paper_download.sources.fulltext import fulltext_sources as fs
 
 
 def test_arxiv_id_from_doi():

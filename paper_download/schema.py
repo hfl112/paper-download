@@ -1,6 +1,6 @@
 """Backward-compatible re-export shim.
 
-The article.json schema and its state logic now live in `paper_extract.article`
+The article.json schema and its state logic now live in `paper_download.article`
 (the Article module). This module is kept so existing `from ..schema import …`
 imports keep working; no schema knowledge or status strings live here.
 """

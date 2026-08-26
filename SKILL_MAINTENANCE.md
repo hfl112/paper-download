@@ -1,7 +1,7 @@
 # Skill Maintenance Guide
 
 Use this checklist whenever the Python CLI behavior changes and the
-`paper-extract` Skill may need to be updated.
+`paper-download` Skill may need to be updated.
 
 ## Core Rule
 
@@ -16,14 +16,14 @@ implementation details.
 1. Compare CLI help against the Skill.
 
    ```bash
-   paper-extract --help
-   paper-extract fetch --help
-   paper-extract library login --help
-   paper-extract collection export --help
+   python paper_download.py --help
+   python paper_download.py fetch --help
+   python paper_download.py library login --help
+   python paper_download.py collection export --help
    ```
 
    If parameter names, required flags, defaults, or command behavior changed,
-   update `skill/paper-extract/SKILL.md`.
+   update `skill/paper-download/SKILL.md`.
 
 2. Update agent-facing rules and sharp edges.
 
@@ -37,7 +37,7 @@ implementation details.
 
 3. Keep complex workflows in references.
 
-   Put longer, conditional flows in `skill/paper-extract/references/`, especially
+   Put longer, conditional flows in `skill/paper-download/references/`, especially
    library access topics such as LibKey, SSO, captcha, session expiry, proxy
    detection, and troubleshooting.
 
@@ -50,7 +50,7 @@ implementation details.
 5. Run release checks.
 
    ```bash
-   python ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py skill/paper-extract
+   python ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py skill/paper-download
    bash tests/run_all.sh
    uv build
    ```
@@ -62,5 +62,5 @@ Before publishing an updated Skill, confirm:
 - `SKILL.md` matches the current CLI contract.
 - References cover any interactive or fragile workflows.
 - Offline unit and smoke tests pass.
-- The source distribution includes `skill/paper-extract/SKILL.md`,
-  `skill/paper-extract/agents/openai.yaml`, and required references.
+- The source distribution includes `skill/paper-download/SKILL.md`,
+  `skill/paper-download/agents/openai.yaml`, and required references.
