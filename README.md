@@ -78,7 +78,11 @@ is saved as `articles/<article_id>/article.pdf` and its provenance recorded in
 `article.json`.
 
 - `--access open` (default) — open-access PDFs only (PMC, Unpaywall,
-  publisher OA APIs).
+  publisher OA APIs). No setup needed:
+
+  ```bash
+  python paper_download.py fetch --collection demo --output-format pdf --access open
+  ```
 - `--access library` — paywalled PDFs through your institution's login in a
   real browser. Log in once, then batch:
 
@@ -88,7 +92,11 @@ is saved as `articles/<article_id>/article.pdf` and its provenance recorded in
   python paper_download.py fetch --collection demo --output-format both --access library --speed normal
   ```
 
-- `--access both` — try open access first, fall back to the library.
+- `--access both` — try open access first, fall back to the library:
+
+  ```bash
+  python paper_download.py fetch --collection demo --output-format both --access both
+  ```
 
 Library access only ever uses **your own valid credentials**, never stores
 them, and strips proxy/login links (flagged `sensitive`) from every export.
