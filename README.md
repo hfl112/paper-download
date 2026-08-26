@@ -71,6 +71,24 @@ data/collections/demo/
 Failures are never hidden: a paper with no accessible full text stays in the
 collection with its status recorded per article and in the fetch log.
 
+## The agent Skill
+
+The repo ships a Skill that teaches AI coding agents (Claude Code, Codex, …)
+to drive the CLI from plain language. Install the CLI first, then:
+
+```bash
+skillshare install hfl112/paper-download/skill/paper-download
+skillshare sync
+```
+
+Then just ask in plain language, for example:
+
+> *"Build a collection of papers on PPTP drug response, download the
+> open-access full text and PDFs, and export a BibTeX file."*
+
+> *"Import these 50 DOIs, then use my library access to get the PDFs that
+> aren't open access."*
+
 ## Downloading PDFs
 
 `fetch` downloads PDFs whenever `--output-format` is `pdf` or `both`; each PDF
@@ -192,16 +210,6 @@ Copy `.env.example` to `.env`; everything is optional.
 | `SPRINGER_OA_API_KEY`, `ELSEVIER_API_KEY`, `WILEY_TDM_TOKEN`, `CORE_API_KEY` | publisher OA fulltext APIs |
 | `LLM_PROVIDER` + one of `GEMINI_API_KEY` / `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` / `ANTHROPIC_API_KEY` | `search-plan --prompt` |
 | `PAPER_DOWNLOAD_ROOT` | where `data/` lives (default: repo root) |
-
-## The agent Skill
-
-The repo ships a Skill that teaches AI coding agents (Claude Code, Codex, …)
-to drive the CLI from plain language. Install the CLI first, then:
-
-```bash
-skillshare install hfl112/paper-download/skill/paper-download
-skillshare sync
-```
 
 ## What's in this repo
 
