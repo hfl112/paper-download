@@ -1,14 +1,18 @@
 """Shared helpers for the search sources.
 
 `retry_get` is the one exponential-backoff GET both fetchers use (Europe PMC
-decodes it as JSON, PubMed keeps the raw bytes); `doc_key` is the one dedup key
-(normalized DOI, else PMID) shared by the fetchers and the cross-source merge.
+decodes it as JSON, PubMed keeps the raw bytes); `retry_post` is the same for a
+form-encoded POST, which a long query needs (a several-thousand-character query
+string makes the GET URL exceed the server limit and return 414); `doc_key` is
+the one dedup key (normalized DOI, else PMID) shared by the fetchers and the
+cross-source merge.
 """
 from __future__ import annotations
 
 import http.client
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Dict
 
@@ -16,10 +20,27 @@ from typing import Dict
 def retry_get(url: str, user_agent: str, max_retries: int = 5) -> bytes:
     """GET with exponential backoff on 429/5xx and transient network errors.
     Returns the raw response bytes; raises on final failure."""
+    return _retry(url, user_agent, max_retries, None)
+
+
+def retry_post(url: str, user_agent: str, params: Dict[str, object],
+               max_retries: int = 5) -> bytes:
+    """Form-encoded POST with the same backoff as `retry_get`.
+
+    A query of a few thousand characters exceeds the URL length Europe PMC
+    accepts (HTTP 414), so the query goes in the body instead."""
+    body = urllib.parse.urlencode(params).encode("utf-8")
+    return _retry(url, user_agent, max_retries, body)
+
+
+def _retry(url: str, user_agent: str, max_retries: int, body: bytes | None) -> bytes:
+    headers = {"User-Agent": user_agent}
+    if body is not None:
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
     delay = 1.0
     for attempt in range(max_retries):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": user_agent})
+            req = urllib.request.Request(url, data=body, headers=headers)
             with urllib.request.urlopen(req, timeout=60) as resp:
                 return resp.read()
         except urllib.error.HTTPError as e:

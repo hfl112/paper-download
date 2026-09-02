@@ -137,6 +137,9 @@ requires `--collection <name>` (the folder under `data/collections/`).
 | `--max <n>` | max results per source (default 1000) |
 | `--source <name>` | repeatable; limit to `epmc`, `pubmed`, `openalex` (default: all; arXiv arrives via OpenAlex) |
 
+A long query is fine: Europe PMC is queried through its `searchPOST` endpoint, so a
+several-thousand-character query does not hit the URL length limit.
+
 ### `fetch` — download fulltext JSON and/or PDFs
 
 | Option | Meaning |

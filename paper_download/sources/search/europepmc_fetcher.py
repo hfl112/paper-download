@@ -14,17 +14,20 @@ import urllib.parse
 import urllib.request
 from typing import Dict, List, Optional
 
-from ._shared import retry_get
+from ._shared import retry_post
 
 BASE_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
+# Europe PMC 的 POST 是另一个端点；对 /search 发 POST 会 405
+POST_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/searchPOST"
 PAGE_SIZE = 1000          # Europe PMC 单页上限
 THROTTLE = 0.34           # 每页请求间隔（秒），约 3 req/s，友好限流
 USER_AGENT = "paper-download/1.0 (literature review tool)"
 
 
-def _request(url: str, max_retries: int = 5) -> dict:
-    """带指数退避重试的 GET，返回解析后的 JSON。"""
-    return json.loads(retry_get(url, USER_AGENT, max_retries).decode("utf-8"))
+def _request(params: Dict[str, object], max_retries: int = 5) -> dict:
+    """带指数退避重试的 POST，返回解析后的 JSON。
+    用 POST 而非 GET：几千字符的 query 会让 GET 的 URL 超长，Europe PMC 返回 414。"""
+    return json.loads(retry_post(POST_URL, USER_AGENT, params, max_retries).decode("utf-8"))
 
 
 def normalize(raw: Dict) -> Dict:
@@ -147,14 +150,13 @@ def search_europepmc(
 
     print(f"检索: {full_query}")
     while len(docs) < max_results:
-        params = urllib.parse.urlencode({
+        data = _request({
             "query": full_query,
             "format": "json",
             "pageSize": page_size,
             "resultType": "core",
             "cursorMark": cursor,
         })
-        data = _request(f"{BASE_URL}?{params}")
         results = data.get("resultList", {}).get("result", [])
         if not results:
             break
