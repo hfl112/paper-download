@@ -649,23 +649,30 @@ def _browser_get_url(url: str, referer: Optional[str] = None, timeout: int = 40)
     return _client.browser_get_url(url, referer, timeout)
 
 
-def _pdf_via_doi_landing(doi: str):
-    """Unpaywall 之外的免费兜底：DOI → 出版商/仓库落地页 → citation_pdf_url meta 或页面 .pdf 直链。
-    覆盖 Unpaywall 没索引/直链失效的 OA（如迁站的 Frontiers、大学机构库）。返回 (bytes, url) 或 (None, reason)。"""
-    base, html = _browser_get_url(f"https://doi.org/{doi}")
+def _pdf_via_landing(land: str):
+    """落地页 → citation_pdf_url meta 或页面 .pdf 直链 → PDF。覆盖 Unpaywall 没索引/直链失效的 OA、校园 IP 直连可读的
+    出版社页（如 Springer）、以及 PubMed LinkOut 给出的期刊站页面。返回 (bytes, url) 或 (None, reason)。"""
+    base, html = _browser_get_url(land)
     if not html:
         return None, "landing_unreachable"
+    if html[:4] == b"%PDF":
+        return html, base or land
     h = html.decode("utf-8", "ignore")
     m = (_re.search(r'name=["\']citation_pdf_url["\'][^>]*content=["\']([^"\']+)["\']', h, _re.I)
          or _re.search(r'content=["\']([^"\']+)["\'][^>]*name=["\']citation_pdf_url["\']', h, _re.I))
-    url = m.group(1) if m else _pdf_from_landing(h, base or f"https://doi.org/{doi}")
+    url = m.group(1) if m else _pdf_from_landing(h, base or land)
     if not url:
         return None, "no_landing_pdf"
-    url = urllib.parse.urljoin(base or f"https://doi.org/{doi}", url.replace("&amp;", "&"))
+    url = urllib.parse.urljoin(base or land, url.replace("&amp;", "&"))
     b = _browser_get(url, base)
     if b and b[:4] == b"%PDF" and len(b) > 5000:
         return b, url
     return None, "landing_pdf_not_pdf"
+
+
+def _pdf_via_doi_landing(doi: str):
+    """DOI → 出版商/仓库落地页 → _pdf_via_landing。"""
+    return _pdf_via_landing(f"https://doi.org/{doi}")
 
 
 def download_pdf(paper: Dict, client: Optional[HttpClient] = None):
@@ -698,6 +705,11 @@ def _download_pdf(paper: Dict):
         if u:
             b = _browser_get(u, _referer_for(u))
             if b and b[:4] == b"%PDF":
+                return b, u
+    for land in (paper.get("land_url"), paper.get("land_url_alt")):   # 出版社页面(LinkOut/已知落地页)：解析出 PDF 直链
+        if land:
+            b, u = _pdf_via_landing(land)
+            if b:
                 return b, u
     if paper.get("doi"):
         b, u = resolve_oa_pdf(paper["doi"])           # ① Unpaywall 全镜像绕 WAF
@@ -740,8 +752,8 @@ def _parse_pdf_3layer(pdf: bytes):
 def _a_pdf(paper: Dict):
     """三层兜底：下载一次 PDF → _parse_pdf_3layer。"""
     pdf, url = _download_pdf(paper)
-    if pdf is None:
-        return None, "pdf_download_failed", ""
+    if pdf is None:                                   # url 槽里是原因(no_mirror / landing_unreachable / ...)
+        return None, f"pdf_download_failed({url})" if url else "pdf_download_failed", ""
     parsed, tag = _parse_pdf_3layer(pdf)
     if parsed is None:
         return None, tag, ""
@@ -974,6 +986,100 @@ PRIORITY = ["pmc_xml", "pmc_html", "epmc_xml", "springer", "wiley_tdm", "elsevie
 ALL_SOURCES = list(ADAPTERS)   # 含未进默认链的（core / pdf 单方法等），需要时 sources=ALL_SOURCES
 
 
+def _usable_doi(doi) -> bool:
+    """Europe PMC 会把期刊自编号(如 011143/aim.005、03.2014/jcpsp.s71s72)放在 doi 字段；只有 10. 开头的才是能解析的 DOI。"""
+    return bool(doi) and str(doi).startswith("10.")
+
+
+def _norm_title(t: str) -> str:
+    """PubMed 标题会带 <sup>/<i> 等标签，Crossref 是纯文本：先去标签再只留字母数字。"""
+    t = _re.sub(r"<[^>]+>", "", t or "")
+    return _re.sub(r"[^a-z0-9]+", " ", t.lower()).strip()
+
+
+def resolve_doi_by_title(paper: Dict):
+    """无 DOI 时按标题查 Crossref：查询带期刊名，限定 journal-article 且出版年 ±1（把 "Data from ..." 之类的补充材料记录
+    和同名书章排掉），只接受标题规范化后完全一致的命中。实测 2026-09-08：40 篇已知 DOI 抹掉后 38 命中、2 漏、0 误配。
+    返回 (doi, reason)。"""
+    title = paper.get("title") or ""
+    if len(_norm_title(title)) < 20:
+        return None, "title_too_short"
+    year = paper.get("pub_year")
+    q = {"query.bibliographic": f"{_re.sub(r'<[^>]+>', '', title)} {paper.get('journal') or ''}".strip(), "rows": 10, "mailto": EMAIL}
+    flt = ["type:journal-article"]
+    if year:
+        flt += [f"from-pub-date:{int(year) - 1}", f"until-pub-date:{int(year) + 1}"]
+    q["filter"] = ",".join(flt)
+    code, body, err = http_get(f"https://api.crossref.org/works?{urllib.parse.urlencode(q)}",
+                               {"User-Agent": f"paper-download (mailto:{EMAIL})"})
+    if code != 200:
+        return None, f"crossref_{code or err}"
+    try:
+        items = json.loads(body)["message"]["items"]
+    except Exception:
+        return None, "crossref_badjson"
+    want = _norm_title(title)
+    hits = []
+    for it in items:
+        if _norm_title(" ".join(it.get("title") or [])) == want:
+            parts = ((it.get("issued") or {}).get("date-parts") or [[None]])[0]
+            hits.append((it["DOI"].lower(), parts[0] if parts else None))
+    if not hits:
+        return None, "crossref_no_title_match"
+    # 同题多条(同刊的会议摘要和正文常同名)：同年的优先；没有同年的只在唯一命中时接受
+    same_year = [d for d, y in hits if year and y and int(y) == int(year)]
+    if len(same_year) == 1:
+        return same_year[0], "crossref_title_match"
+    if not same_year and len(hits) == 1:
+        return hits[0][0], "crossref_title_match_year_off_by_one"
+    return None, f"crossref_ambiguous:{len(hits)}_same_title"
+
+
+def resolve_publisher_url(pmid: str):
+    """PubMed LinkOut(prlinks) → 出版社全文页 URL。返回 (url, reason)。"""
+    q = f"dbfrom=pubmed&id={pmid}&cmd=prlinks&retmode=json" + (f"&api_key={NCBI_KEY}" if NCBI_KEY else "")
+    code, body, err = http_get(f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?{q}")
+    if code != 200:
+        return None, f"elink_{code or err}"
+    try:
+        for s_ in json.loads(body)["linksets"][0].get("idurllist", []):
+            for o in s_.get("objurls", []):
+                u = (o.get("url") or {}).get("value")
+                if u:
+                    return u, "linkout"
+    except Exception:
+        return None, "elink_badjson"
+    return None, "linkout_empty"
+
+
+def resolve_identifiers(paper: Dict) -> Tuple[Dict, List[str]]:
+    """flat paper 缺可用 DOI 时就地补：假 DOI 清掉(连同指向它的 doi.org 落地页)，标题查 Crossref 补 DOI，
+    还不行就拿 PubMed LinkOut 的出版社页做 land_url。返回 (补上的字段 dict, 失败原因列表)。"""
+    resolved: Dict = {}
+    reasons: List[str] = []
+    if _usable_doi(paper.get("doi")):
+        return resolved, reasons
+    if paper.get("doi"):
+        reasons.append(f"doi_unusable:{paper['doi']}")
+        if (paper.get("land_url") or "").startswith("https://doi.org/"):
+            paper["land_url"] = None
+    paper["doi"] = None
+    doi, why = resolve_doi_by_title(paper)
+    if doi:
+        paper["doi"] = doi
+        resolved["doi"] = doi
+    else:
+        reasons.append(f"crossref:{why}")
+        if paper.get("pmid"):
+            url, why = resolve_publisher_url(paper["pmid"])
+            if url and url != paper.get("land_url"):   # PubMed 维护的出版社链接优先，Europe PMC 给的页面留作备选
+                paper["land_url"], paper["land_url_alt"] = url, paper.get("land_url")
+                resolved["land_url"] = url
+            elif not url:
+                reasons.append(f"linkout:{why}")
+    return resolved, reasons
+
+
 def get_fulltext(paper: Dict, sources: Optional[List[str]] = None,
                  client: Optional[HttpClient] = None) -> Tuple[Optional[Dict], str]:
     """深接口：按优先级逐源取结构化全文，第一篇质检非 reject 即返回。
@@ -993,6 +1099,7 @@ def _get_fulltext(paper: Dict, sources: Optional[List[str]] = None
                   ) -> Tuple[Optional[Dict], str]:
     order = sources or PRIORITY
     paper = dict(paper)
+    resolved, reasons = resolve_identifiers(paper)     # 假/缺 DOI → Crossref 标题匹配 / LinkOut 落地页
 
     # 缺 PMCID 但有 doi/pmid → 先反查（一次，供所有 PMC 系源用）
     if not paper.get("pmcid") and (paper.get("doi") or paper.get("pmid")) \
@@ -1001,7 +1108,6 @@ def _get_fulltext(paper: Dict, sources: Optional[List[str]] = None
         if pm:
             paper["pmcid"] = pm
 
-    reasons: List[str] = []
     for name in order:
         adapter, applies, endpoint = ADAPTERS[name]
         if not applies(paper):
@@ -1013,7 +1119,7 @@ def _get_fulltext(paper: Dict, sources: Optional[List[str]] = None
         if parsed is None:
             reasons.append(f"{name}:{tag}"); continue
         prov = {"access_source": tag, "source_endpoint": endpoint, "fulltext_url": url,
-                "accessed_at": _now(),
+                "accessed_at": _now(), "resolved_identifiers": resolved,
                 "license": parsed.get("license", ""), "license_url": parsed.get("license_url", ""),
                 "reuse_class": _reuse_class(parsed.get("license", ""), parsed.get("license_url", ""))}
         doc = build_doc(paper.get("pmcid", ""), parsed, paper, prov)

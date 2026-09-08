@@ -30,6 +30,13 @@ def fetch_json_open(article: dict[str, Any]) -> tuple[dict[str, Any] | None, str
         article.setdefault("links", {}).setdefault("pmc", {}).pop("page", None)
         article.setdefault("links", {}).setdefault("pmc", {}).pop("pdf", None)
     updated = assemble_mod.assemble_from_doc(article, doc)
+    # a DOI found by Crossref title match / a LinkOut page used for the PDF: keep them, the article_id stays
+    resolved = (doc.get("provenance") or {}).get("resolved_identifiers") or {}
+    if resolved.get("doi"):
+        updated.setdefault("identifiers", {})["doi"] = resolved["doi"]
+        updated.setdefault("links", {}).setdefault("publisher", {})["page"] = f"https://doi.org/{resolved['doi']}"
+    if resolved.get("land_url"):
+        updated.setdefault("links", {}).setdefault("publisher", {})["page"] = resolved["land_url"]
     return updated, warning
 
 

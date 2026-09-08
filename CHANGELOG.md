@@ -7,6 +7,12 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Articles without a usable DOI (none, or a journal's own code that Europe PMC
+  put in the doi field, e.g. `011143/aim.005`) are no longer dead ends: the
+  full-text chain first asks Crossref for the DOI by exact title match (year
+  within 1), then falls back to the PubMed LinkOut publisher page, whose PDF
+  link is parsed like any landing page. A resolved DOI or page is written back
+  to `identifiers` / `links.publisher`; the article_id does not change.
 - PDF downloads (`fetch --output-format pdf`) now try the Wiley TDM API when
   `WILEY_TDM_TOKEN` is set and the DOI is a Wiley prefix, right after the PMC
   route; the API is throttled to 6 requests per minute (Wiley's 60 per 10 min).
