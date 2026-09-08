@@ -57,6 +57,7 @@ def run_fetch(
     force: bool = False,
     interactive: bool | None = None,
     speed: str = "fast",
+    ids: set[str] | None = None,
 ) -> Path:
     if output_format not in {"json", "pdf", "both"}:
         raise ValueError("--output-format must be json, pdf, or both")
@@ -72,6 +73,8 @@ def run_fetch(
     started = utc_now()
     routes = _access_routes(access)
     articles = store.iter_articles()
+    if ids is not None:
+        articles = [a for a in articles if a["article_id"] in ids]
     if limit:
         articles = articles[:limit]
 
@@ -184,7 +187,8 @@ def run_fetch(
     store.update_stats(refreshed)
     return store.write_log(
         "fetch",
-        {"output_format": output_format, "access": access, "limit": limit, "force": force},
+        {"output_format": output_format, "access": access, "limit": limit, "force": force,
+         "ids": sorted(ids) if ids is not None else None},
         {"total": len(articles), "succeeded": succeeded, "failed": failed, "skipped": skipped},
         items,
         started,

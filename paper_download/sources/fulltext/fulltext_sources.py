@@ -55,6 +55,13 @@ EMAIL = os.environ.get("PAPER_DOWNLOAD_EMAIL") or os.environ.get("PAPER_EXTRACT_
 SPRINGER_PREFIXES = ("10.1007", "10.1038", "10.1186")
 WILEY_PREFIXES = ("10.1002", "10.1111", "10.1046", "10.1113")  # Wiley/Blackwell 主前缀
 
+# Docling 在 import 时就读这些环境变量，必须在任何 docling import 之前设好（setdefault 保留外部覆盖）：
+# torch.compile 对一次性解析是净亏损，且在老 g++(无 c++20)上直接崩，整篇静默退到 pymupdf 平文本；
+# torch 线程池不认 Slurm cgroup，按作业配额起线程。
+os.environ.setdefault("DOCLING_INFERENCE_COMPILE_TORCH_MODELS", "0")
+if os.environ.get("SLURM_CPUS_PER_TASK"):
+    os.environ.setdefault("OMP_NUM_THREADS", os.environ["SLURM_CPUS_PER_TASK"])
+
 
 # ── HTTP port ──────────────────────────────────────────────────────────────
 # The transport is injectable at one seam. Production uses UrllibClient (real
@@ -95,6 +102,7 @@ class UrllibClient:
         "api.crossref.org":        1.0,
         "api.unpaywall.org":       0.12,
         "api.core.ac.uk":          6.0,
+        "api.wiley.com":           10.0,   # Wiley TDM terms: 60 requests per 10 minutes
     }
     _DEFAULT_RATE = 0.5
     _NOVERIFY = _ssl._create_unverified_context()
@@ -395,10 +403,15 @@ _DOCLING_CONV = None
 
 
 def _docling_converter():
+    """Docling 自带 OCR 关掉：有文字层的 PDF 用不到，扫描件走 parse_pdf_ocr(tesseract)；
+    开着它每次都去 modelscope.cn 拉 RapidOCR 模型，集群上下载失败要白等 2 分钟/篇。"""
     global _DOCLING_CONV
     if _DOCLING_CONV is None:
-        from docling.document_converter import DocumentConverter
-        _DOCLING_CONV = DocumentConverter()
+        from docling.datamodel.pipeline_options import PdfPipelineOptions
+        from docling.document_converter import DocumentConverter, PdfFormatOption
+        opts = PdfPipelineOptions()
+        opts.do_ocr = False
+        _DOCLING_CONV = DocumentConverter(format_options={"pdf": PdfFormatOption(pipeline_options=opts)})
     return _DOCLING_CONV
 
 
@@ -512,6 +525,7 @@ def split_flat_sections(text: str) -> Dict[str, str]:
                 key = "abstract" if cur.lower() in ("abstract", "summary", "resumo") else cur
                 sections[key] = (sections[key] + "\n\n" + body) if key in sections else body
 
+    pre: List[str] = []                      # 第一个标题前的文字：无 Introduction 标题的短文/病例报告，正文全在这里
     for raw in text.splitlines():
         s = raw.strip()
         m = _FLAT_HEAD_RE.match(s) if (s and len(s) <= 40) else None
@@ -521,7 +535,12 @@ def split_flat_sections(text: str) -> Dict[str, str]:
             buf = []
         elif cur is not None:
             buf.append(raw)
+        else:
+            pre.append(raw)
     flush()
+    pre_text = "\n".join(pre).strip()
+    if len(pre_text) >= 1000 and "abstract" not in {k.lower() for k in sections}:
+        sections = {"Preamble": pre_text, **sections}
     # 至少要有一个"正文叙事"标题(非纯 abstract/references)才算切分成功
     real = [k for k in sections if k.lower() not in ("abstract", "references", "reference")]
     return sections if len(sections) >= 2 and real else {}
@@ -661,13 +680,19 @@ def download_pdf(paper: Dict, client: Optional[HttpClient] = None):
 
 
 def _download_pdf(paper: Dict):
-    """取 PDF 字节（不落盘）。顺序：pmcid→EPMC 渲染链；已知 pdf_url/land_url（浏览器伪装）；
-    Unpaywall 全镜像（resolve_oa_pdf）；最后 DOI 落地页 citation_pdf_url 兜底。"""
+    """取 PDF 字节（不落盘）。顺序：pmcid→EPMC 渲染链；Wiley DOI 且有 token→TDM API（出版社版,含订阅内闭源）；
+    已知 pdf_url/land_url（浏览器伪装）；Unpaywall 全镜像（resolve_oa_pdf）；最后 DOI 落地页 citation_pdf_url 兜底。"""
     if paper.get("pmcid"):
         num = paper["pmcid"].upper().replace("PMC", "")
         b = _browser_get(f"https://europepmc.org/articles/PMC{num}?pdf=render")
         if b and b[:4] == b"%PDF":
             return b, f"epmc_render:PMC{num}"
+    wiley_reason = ""
+    if _is_wiley(paper.get("doi")):
+        b, u = _wiley_tdm_pdf(paper["doi"])
+        if b:
+            return b, u
+        wiley_reason = u
     for k in ("pdf_url", "land_url"):
         u = paper.get(k)
         if u:
@@ -678,8 +703,11 @@ def _download_pdf(paper: Dict):
         b, u = resolve_oa_pdf(paper["doi"])           # ① Unpaywall 全镜像绕 WAF
         if b:
             return b, u
-        return _pdf_via_doi_landing(paper["doi"])     # ② 落地页 citation_pdf_url 兜底
-    return None, ""
+        b, u = _pdf_via_doi_landing(paper["doi"])     # ② 落地页 citation_pdf_url 兜底
+        if b:
+            return b, u
+        return None, "; ".join(x for x in (wiley_reason, u) if x)
+    return None, wiley_reason
 
 
 def _has_pdf(p):
@@ -720,23 +748,33 @@ def _a_pdf(paper: Dict):
     return parsed, tag, url
 
 
-def _a_wiley_tdm(paper: Dict):
-    """Wiley 官方 TDM API（合规,机构订阅方有权非商业文本挖掘,不额外收费）：
-    GET api.wiley.com/onlinelibrary/tdm/v1/articles/{DOI} + 头 Wiley-TDM-Client-Token → PDF。
-    覆盖机构订阅的 Wiley 内容(含闭源,不止 OA)；无反爬、无阅读器,直出干净 PDF。
-    token 从 https://onlinelibrary.wiley.com/library-info/resources/text-and-datamining 自助领,
-    登记进 ../api.md 的环境变量 WILEY_TDM_TOKEN。"""
+def _wiley_tdm_pdf(doi: str):
+    """Wiley 官方 TDM API：GET api.wiley.com/onlinelibrary/tdm/v1/articles/{DOI} + 头 Wiley-TDM-Client-Token → PDF 字节。
+    权限按请求方公网 IP 的机构订阅判定（含闭源），限速 60 次/10 分钟（_RATE）。返回 (bytes, url) 或 (None, reason)。"""
     key = os.environ.get("WILEY_TDM_TOKEN", "")
     if not key:
-        return None, "no_token", ""
-    doi = paper["doi"]
-    url = f"https://api.wiley.com/onlinelibrary/tdm/v1/articles/{urllib.parse.quote(doi)}"
+        return None, "no_token"
+    url = f"https://api.wiley.com/onlinelibrary/tdm/v1/articles/{urllib.parse.quote(doi, safe='')}"
     # urllib 默认跟随重定向；TDM 会 302 到实际 PDF
     code, body, err = http_get(url, {"Wiley-TDM-Client-Token": key, "User-Agent": BROWSER_UA})
     if code in (401, 403):
-        return None, f"auth_{code}(token?)", ""
+        return None, f"auth_{code}(token?)"
     if code != 200 or body[:4] != b"%PDF":
-        return None, f"wiley_tdm_{code or err}", ""
+        return None, f"wiley_tdm_{code or err}"
+    return body, url
+
+
+def _is_wiley(doi: str) -> bool:
+    return bool(os.environ.get("WILEY_TDM_TOKEN")) and (doi or "").startswith(WILEY_PREFIXES)
+
+
+def _a_wiley_tdm(paper: Dict):
+    """Wiley 官方 TDM API（合规,机构订阅方有权非商业文本挖掘,不额外收费）→ PDF → _parse_pdf_3layer。
+    token 从 https://onlinelibrary.wiley.com/library-info/resources/text-and-datamining 自助领,
+    登记进 .env 的环境变量 WILEY_TDM_TOKEN。"""
+    body, url = _wiley_tdm_pdf(paper["doi"])
+    if body is None:
+        return None, url, ""
     parsed, tag = _parse_pdf_3layer(body)
     if parsed is None:
         return None, tag, ""
@@ -909,7 +947,7 @@ ADAPTERS = {
     "pmc_html": (_a_pmc_html, lambda p: bool(p.get("pmcid")), "ncbi_pmc_html"),
     "epmc_xml": (_a_epmc_xml, lambda p: bool(p.get("pmcid")), "europepmc_fulltextxml"),
     "springer": (_a_springer, lambda p: (p.get("doi") or "").startswith(SPRINGER_PREFIXES), "springer_oa"),
-    "wiley_tdm": (_a_wiley_tdm, lambda p: bool(os.environ.get("WILEY_TDM_TOKEN")) and (p.get("doi") or "").startswith(WILEY_PREFIXES), "wiley_tdm_api"),
+    "wiley_tdm": (_a_wiley_tdm, lambda p: _is_wiley(p.get("doi")), "wiley_tdm_api"),
     "elsevier": (_a_elsevier, lambda p: (p.get("doi") or "").startswith("10.1016"), "elsevier_article"),
     "biorxiv":  (_a_biorxiv,  lambda p: (p.get("doi") or "").startswith("10.1101"), "biorxiv_api"),
     "arxiv":    (_a_arxiv,    lambda p: (p.get("doi") or "").lower().startswith("10.48550/arxiv"), "arxiv_pdf"),

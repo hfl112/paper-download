@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from .collection import CollectionStore
 from .collection.importer import import_articles
@@ -59,8 +60,16 @@ def cmd_fetch(args: argparse.Namespace) -> None:
         force=args.force,
         interactive=(False if args.non_interactive else None),
         speed=args.speed,
+        ids=_read_ids(args.ids_file),
     )
     print(f"Wrote fetch log: {path}")
+
+
+def _read_ids(path: str | None) -> set[str] | None:
+    """--ids-file: one article_id per line, blank lines ignored; None when the option is absent."""
+    if not path:
+        return None
+    return {line.strip() for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()}
 
 
 def cmd_library_doctor(args: argparse.Namespace) -> None:
@@ -164,6 +173,8 @@ def build_parser(prog: str | None = None) -> argparse.ArgumentParser:
     p.add_argument("--output-format", choices=["json", "pdf", "both"], required=True)
     p.add_argument("--access", choices=["open", "library", "both"], default="open")
     p.add_argument("--limit", type=int)
+    p.add_argument("--ids-file", dest="ids_file",
+                   help="only fetch the article_ids listed in this file (one per line); lets several jobs share one collection")
     p.add_argument("--force", action="store_true")
     p.add_argument("--non-interactive", dest="non_interactive", action="store_true",
                    help="Never prompt/open a login browser; require a pre-established library session and fail fast otherwise")

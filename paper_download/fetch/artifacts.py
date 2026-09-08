@@ -38,7 +38,8 @@ def fetch_pdf_open(store: CollectionStore, article: dict[str, Any]) -> tuple[dic
     flat, warning = assemble_mod.flatten_article(article)
     pdf, url = fulltext_sources.download_pdf(flat)
     if not pdf:
-        return None, "; ".join(x for x in (warning, "pdf_download_failed") if x)
+        # download_pdf returns its reason (no_mirror, unpaywall_404, landing_unreachable, ...) in the url slot
+        return None, "; ".join(x for x in (warning, url or "pdf_download_failed") if x)
     path = store.pdf_path(article["article_id"])
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(pdf)

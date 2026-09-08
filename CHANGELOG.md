@@ -6,6 +6,30 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- PDF downloads (`fetch --output-format pdf`) now try the Wiley TDM API when
+  `WILEY_TDM_TOKEN` is set and the DOI is a Wiley prefix, right after the PMC
+  route; the API is throttled to 6 requests per minute (Wiley's 60 per 10 min).
+  Before, the token was only used by the full-text JSON chain.
+- `fetch --ids-file <file>`: fetch only the listed article_ids, so several jobs
+  can work on disjoint slices of one collection in parallel.
+
+### Fixed
+- Docling's torch.compile is switched off (`DOCLING_INFERENCE_COMPILE_TORCH_MODELS=0`
+  unless already set): on hosts whose g++ lacks c++20 it raised inside
+  `parse_pdf_docling`, and the silent fallback to the flat pymupdf text lost
+  every paragraph before the first recognised heading. That flat splitter now
+  keeps such text as a `Preamble` section when it is 1000+ characters and no
+  abstract was found, so case reports without an Introduction heading survive
+  even when Docling is unavailable.
+- Docling PDF parsing runs with its own OCR disabled: text-layer PDFs never
+  needed it, scanned PDFs already fall through to the tesseract route, and the
+  RapidOCR model download it triggered cost two minutes per PDF on hosts that
+  cannot reach modelscope.cn.
+- The fetch log now records why an open-access PDF download failed
+  (`no_mirror`, `unpaywall_404`, `landing_unreachable`, ...) instead of the
+  generic `pdf_download_failed`.
+
 ### Changed
 - **Renamed the project `paper-extract` -> `paper-download`.** The old name
   collided with the sibling table-extraction tool; this one never extracts from

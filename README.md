@@ -147,6 +147,7 @@ several-thousand-character query does not hit the URL length limit.
 | `--output-format json\|pdf\|both` | required; what to download. `json` = structured full text, `pdf` = `article.pdf`, `both` = both |
 | `--access open\|library\|both` | where from (default `open`); see [Downloading PDFs](#downloading-pdfs) |
 | `--limit <n>` | stop after n articles |
+| `--ids-file <file>` | only the article_ids listed in the file (one per line); split one collection across several jobs |
 | `--force` | re-fetch articles already done |
 | `--non-interactive` | never open a login browser; fail fast without a saved library session |
 | `--speed fast\|normal\|slow` | library throttle between articles: 8s fixed / 5–60s random / 50–300s random (default `fast`) |
