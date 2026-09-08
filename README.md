@@ -3,7 +3,6 @@
 **Search the literature, download structured full text and PDFs, and keep the
 whole collection auditable.**
 
-[![CI](https://github.com/hfl112/paper-download/actions/workflows/ci.yml/badge.svg)](https://github.com/hfl112/paper-download/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
