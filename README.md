@@ -210,7 +210,8 @@ Copy `.env.example` to `.env`; everything is optional.
 |---|---|
 | `PAPER_DOWNLOAD_EMAIL` | polite-request email for Unpaywall / NCBI / OpenAlex |
 | `NCBI_API_KEY` | faster PubMed / PMC (3 → 10 req/s) |
-| `SPRINGER_OA_API_KEY`, `ELSEVIER_API_KEY`, `WILEY_TDM_TOKEN`, `CORE_API_KEY` | publisher OA fulltext APIs |
+| `SPRINGER_OA_API_KEY`, `ELSEVIER_API_KEY`, `WILEY_TDM_TOKEN`, `CORE_API_KEY` | publisher fulltext APIs (Elsevier and Wiley also serve subscribed content when the request comes from the institution's IP range) |
+| `ELSEVIER_INSTTOKEN` | Elsevier institutional token, lets the article API work from outside the institution's IP range (request it from Elsevier integration support) |
 | `LLM_PROVIDER` + one of `GEMINI_API_KEY` / `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` / `ANTHROPIC_API_KEY` | `search-plan --prompt` |
 | `PAPER_DOWNLOAD_ROOT` | where `data/` lives (default: repo root) |
 

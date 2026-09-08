@@ -7,6 +7,8 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- `ELSEVIER_INSTTOKEN`: sent as `X-ELS-Insttoken` with the Elsevier article API
+  so text mining works from hosts outside the institution's IP range.
 - Articles without a usable DOI (none, or a journal's own code that Europe PMC
   put in the doi field, e.g. `011143/aim.005`) are no longer dead ends: the
   full-text chain first asks Crossref for the DOI by exact title match (year

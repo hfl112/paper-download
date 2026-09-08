@@ -315,8 +315,12 @@ def _a_elsevier(paper: Dict):
     if not key:
         return None, "no_key", ""
     url = f"https://api.elsevier.com/content/article/doi/{urllib.parse.quote(paper['doi'])}"
-    code, body, err = http_get(url, {"X-ELS-APIKey": key, "Accept": "text/xml",
-                                     "User-Agent": BROWSER_UA})
+    hdr = {"X-ELS-APIKey": key, "Accept": "text/xml", "User-Agent": BROWSER_UA}
+    # 全文视图按请求方 IP 的机构订阅放行；不在机构 IP 段内(如 HPC 出口 IP)时 Elsevier 会给 403
+    # "AUTHENTICATION_ERROR Requestor configuration settings insufficient"，解法是向 Elsevier 申请机构 token
+    if os.environ.get("ELSEVIER_INSTTOKEN"):
+        hdr["X-ELS-Insttoken"] = os.environ["ELSEVIER_INSTTOKEN"]
+    code, body, err = http_get(url, hdr)
     if code in (401, 403):
         return None, f"denied_{code}", ""
     if code != 200:
