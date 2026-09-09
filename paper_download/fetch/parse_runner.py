@@ -38,6 +38,19 @@ def parse_saved_pdf(store: CollectionStore, article: dict[str, Any]) -> tuple[di
     return updated, ""
 
 
+def check_docling(pdf_path: Path) -> None:
+    """Run Docling once before the batch. The 3-layer parse falls back to PyMuPDF flat text when Docling raises, which is
+    right for one bad PDF but wrong for a broken environment (e.g. a torch build without kernels for this GPU: every
+    article would silently come out as flat text marked available). Abort on such an error instead."""
+    try:
+        fulltext_sources.parse_pdf_docling(pdf_path.read_bytes())
+    except Exception as e:  # noqa: BLE001
+        msg = f"{type(e).__name__}: {e}"
+        if "CUDA" in msg or "cuda" in msg or "kernel image" in msg:
+            raise SystemExit(f"Docling cannot run here ({msg.splitlines()[0]}). Fix the torch/CUDA build or run on another node; "
+                             "nothing was parsed.")
+
+
 def run_parse(store: CollectionStore, *, ids: set[str] | None = None, limit: int | None = None, force: bool = False) -> Path:
     started = utc_now()
     articles = store.iter_articles()
@@ -51,6 +64,8 @@ def run_parse(store: CollectionStore, *, ids: set[str] | None = None, limit: int
 
     todo = [a for a in articles if _needs(a)]
     print(f"Parsing: {len(todo)} to parse, {len(articles) - len(todo)} skipped (no pdf or already parsed)", flush=True)
+    if todo:
+        check_docling(store.pdf_path(todo[0]["article_id"]))
     items: list[dict[str, Any]] = []
     succeeded = failed = 0
     width = len(str(len(todo) or 1))

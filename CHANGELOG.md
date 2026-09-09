@@ -30,6 +30,9 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   can work on disjoint slices of one collection in parallel.
 
 ### Fixed
+- `parse` runs Docling once before the batch and aborts on a CUDA / kernel-image
+  error instead of letting every article fall back to PyMuPDF flat text (that
+  happened on a V100 with a CUDA 13 torch build, which carries no sm_70 kernels).
 - Docling's torch.compile is switched off (`DOCLING_INFERENCE_COMPILE_TORCH_MODELS=0`
   unless already set): on hosts whose g++ lacks c++20 it raised inside
   `parse_pdf_docling`, and the silent fallback to the flat pymupdf text lost
