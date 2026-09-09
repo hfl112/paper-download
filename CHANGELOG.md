@@ -7,11 +7,13 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Fixed
-- The PMCID lookup (Europe PMC REST search, run for every article that has a
-  DOI or PMID but no PMCID) went through an unthrottled urllib helper, so
-  parallel fetch jobs drew HTTP 429 from Europe PMC (auto-retried, ~150 in the
-  first 3 jobs x 1.5 h). It now uses the throttled client; the www.ebi.ac.uk
-  interval is 1 s per process.
+- Two per-article lookups bypassed the rate-limited client and drew HTTP 429
+  when several fetch jobs ran in parallel (auto-retried, so nothing was lost,
+  but ~150 retries in the first 3 jobs x 1.5 h): the Europe PMC PMCID lookup
+  for articles with a DOI/PMID but no PMCID, and the NCBI efetch that
+  validates a stored PMCID against the article's DOI/PMID before fetching
+  (this one also ignored `NCBI_API_KEY`). Both now go through the throttled
+  client; the www.ebi.ac.uk interval is 1 s per process.
 
 ### Added
 - `fetch --defer-pdf-parse` and the new `parse` command split full-text

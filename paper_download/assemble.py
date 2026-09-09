@@ -23,7 +23,7 @@ from urllib.parse import parse_qs, urlparse
 
 from . import article as article_mod
 from . import links as links_mod
-from .sources.fulltext import fulltext_fetcher
+from .sources.fulltext import fulltext_fetcher, fulltext_sources
 
 # --------------------------------------------------------------------------
 # article.json  ->  flat "paper" dict the source adapters expect
@@ -65,8 +65,13 @@ def flatten_article(article: dict[str, Any], validate_pmcid: bool = True) -> tup
 
 
 def _pmcid_matches(pmcid: str, doi: str | None, pmid: str | None) -> bool:
-    xml, _status = fulltext_fetcher.fetch_fulltext_xml(pmcid)
-    if not xml:
+    # Throttled + keyed efetch: the plain helper in fulltext_fetcher drew NCBI 429s under parallel fetch jobs.
+    num = pmcid.upper().replace("PMC", "").strip()
+    url = f"{fulltext_fetcher.EFETCH}?db=pmc&id={num}&rettype=xml&retmode=xml"
+    if fulltext_sources.NCBI_KEY:
+        url += f"&api_key={fulltext_sources.NCBI_KEY}"
+    code, xml, _err = fulltext_sources.http_get(url)
+    if code != 200 or not xml:
         return True
     article_ids = _front_article_ids(xml)
     if not article_ids:
