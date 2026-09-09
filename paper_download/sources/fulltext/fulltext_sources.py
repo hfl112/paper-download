@@ -103,6 +103,9 @@ class UrllibClient:
         "api.unpaywall.org":       0.12,
         "api.core.ac.uk":          6.0,
         "api.wiley.com":           10.0,   # Wiley TDM terms: 60 requests per 10 minutes
+        "link.springer.com":       3.0,    # Springer Nature TDM policy: 1 request/s for direct downloads; 3 s leaves room for 3 parallel jobs
+        "www.nature.com":          3.0,
+        "europepmc.org":           1.0,    # PDF render is a heavy call; the REST API on www.ebi.ac.uk keeps 0.5
     }
     _DEFAULT_RATE = 0.5
     _NOVERIFY = _ssl._create_unverified_context()

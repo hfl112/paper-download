@@ -39,6 +39,9 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   generic `pdf_download_failed`.
 
 ### Changed
+- Per-host throttles for link.springer.com and www.nature.com (3 s, Springer
+  Nature's TDM policy allows 1 request/s for direct downloads) and the Europe
+  PMC PDF render (1 s).
 - **Renamed the project `paper-extract` -> `paper-download`.** The old name
   collided with the sibling table-extraction tool; this one never extracts from
   paper content, it searches, fetches and exports. Import package
