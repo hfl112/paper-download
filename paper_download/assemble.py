@@ -135,6 +135,14 @@ def doc_matches_article(article: dict[str, Any], doc: dict[str, Any]) -> tuple[b
         if doi or pmid:
             if not _pmcid_matches(url_pmcid, doi, pmid):
                 return False, f"fulltext_identity_mismatch:{url_pmcid}"
+    if source.startswith("pdf"):
+        # Parsed PDF text (headings included) must carry the DOI or most title words; the abstract section comes from metadata.
+        secs = {k: v for k, v in (doc.get("sections") or {}).items() if k != "abstract" and isinstance(v, str)}
+        text = " ".join([doc.get("title") or ""] + list(secs) + list(secs.values()))
+        title = (article.get("metadata") or {}).get("title") or ""
+        ok, reason = fulltext_sources.text_matches_paper(text, {"doi": doi, "title": title})
+        if not ok:
+            return False, reason
     return True, ""
 
 

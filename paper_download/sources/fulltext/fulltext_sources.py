@@ -635,30 +635,35 @@ def _pdf_from_landing(html: str, base: str) -> Optional[str]:
     return None
 
 
-def resolve_oa_pdf(doi: str):
-    """遍历 Unpaywall 全部 oa_locations 找能下到的 PDF：① 任一位置暴露 PMCID → EPMC 渲染链；
-    ② 仓库直链 url_for_pdf（仓库不 WAF，优先）；③ 仓库落地页 → 解析出 PDF 直链。返回 (bytes, url) 或 (None, reason)。"""
+def _oa_pdf_candidates(doi: str, reasons: List[str]):
+    """遍历 Unpaywall 全部 oa_locations，逐个产出能下到的 PDF (bytes, url)：① 任一位置暴露 PMCID → EPMC 渲染链；
+    ② 仓库直链 url_for_pdf（仓库不 WAF，优先）；③ 仓库落地页 → 解析出 PDF 直链。一个都没有时把原因追加到 reasons。"""
     code, body, _ = http_get(f"https://api.unpaywall.org/v2/{urllib.parse.quote(doi)}?email={EMAIL}")
     if code != 200:
-        return None, f"unpaywall_{code}"
+        reasons.append(f"unpaywall_{code}")
+        return
     try:
         locs = json.loads(body).get("oa_locations") or []
     except Exception:
-        return None, "unpaywall_badjson"
+        reasons.append("unpaywall_badjson")
+        return
+    found = False
     # ① PMCID 命中（最干净）
     for l in locs:
         m = _re.search(r"PMC\d+", (l.get("url") or "") + " " + (l.get("url_for_pdf") or ""))
         if m:
             b = _browser_get(f"https://europepmc.org/articles/{m.group(0)}?pdf=render")
             if b and b[:4] == b"%PDF":
-                return b, f"epmc_render:{m.group(0)}"
+                found = True
+                yield b, f"epmc_render:{m.group(0)}"
     # ② 仓库直链（repository 优先于 publisher）
     for l in sorted(locs, key=lambda x: x.get("host_type") == "publisher"):
         up = l.get("url_for_pdf")
         if up:
             b = _browser_get(up, _referer_for(up))
             if b and b[:4] == b"%PDF":
-                return b, up
+                found = True
+                yield b, up
     # ③ 落地页解析
     for l in locs:
         land = l.get("url")
@@ -669,8 +674,10 @@ def resolve_oa_pdf(doi: str):
                 if link:
                     b = _browser_get(link, land)
                     if b and b[:4] == b"%PDF":
-                        return b, link
-    return None, "no_mirror"
+                        found = True
+                        yield b, link
+    if not found:
+        reasons.append("no_mirror")
 
 
 def _browser_get_url(url: str, referer: Optional[str] = None, timeout: int = 40):
@@ -716,44 +723,89 @@ def download_pdf(paper: Dict, client: Optional[HttpClient] = None):
         return _download_pdf(paper)
 
 
-def _download_pdf(paper: Dict):
-    """取 PDF 字节（不落盘）。顺序：pmcid→EPMC 渲染链；Wiley DOI 且有 token→TDM API（出版社版,含订阅内闭源）；
-    已知 pdf_url/land_url（浏览器伪装）；Unpaywall 全镜像（resolve_oa_pdf）；最后 DOI 落地页 citation_pdf_url 兜底。"""
+def _pdf_candidates(paper: Dict, reasons: List[str]):
+    """逐个产出候选 PDF (bytes, url)。顺序：pmcid→EPMC 渲染链；Wiley DOI 且有 token→TDM API（出版社版,含订阅内闭源）；
+    已知 pdf_url/land_url（浏览器伪装）；Unpaywall 全镜像；最后 DOI 落地页 citation_pdf_url 兜底。失败原因追加到 reasons。"""
     if paper.get("pmcid"):
         num = paper["pmcid"].upper().replace("PMC", "")
         b = _browser_get(f"https://europepmc.org/articles/PMC{num}?pdf=render")
         if b and b[:4] == b"%PDF":
-            return b, f"epmc_render:PMC{num}"
-    wiley_reason = ""
+            yield b, f"epmc_render:PMC{num}"
     if _is_wiley(paper.get("doi")):
         b, u = _wiley_tdm_pdf(paper["doi"])
         if b:
-            return b, u
-        wiley_reason = u
+            yield b, u
+        else:
+            reasons.append(u)
     for k in ("pdf_url", "land_url"):
         u = paper.get(k)
         if u:
             b = _browser_get(u, _referer_for(u))
             if b and b[:4] == b"%PDF":
-                return b, u
+                yield b, u
     for land in (paper.get("land_url"), paper.get("land_url_alt")):   # 出版社页面(LinkOut/已知落地页)：解析出 PDF 直链
         if land:
             b, u = _pdf_via_landing(land)
             if b:
-                return b, u
+                yield b, u
     if paper.get("doi"):
-        b, u = resolve_oa_pdf(paper["doi"])           # ① Unpaywall 全镜像绕 WAF
+        yield from _oa_pdf_candidates(paper["doi"], reasons)   # ① Unpaywall 全镜像绕 WAF
+        b, u = _pdf_via_doi_landing(paper["doi"])             # ② 落地页 citation_pdf_url 兜底
         if b:
+            yield b, u
+        elif u:
+            reasons.append(u)
+
+
+def _download_pdf(paper: Dict):
+    """取 PDF 字节（不落盘）：按 _pdf_candidates 的顺序取第一个通过 pdf_matches_paper 的候选。镜像给错文件时
+    （实测：Unpaywall 指向机构仓库里的一张 CC 许可证海报）换下一个候选，而不是把错文件当全文存下来。
+    返回 (bytes, url) 或 (None, reason)。"""
+    reasons: List[str] = []
+    for b, u in _pdf_candidates(paper, reasons):
+        ok, why = pdf_matches_paper(b, paper)
+        if ok:
             return b, u
-        b, u = _pdf_via_doi_landing(paper["doi"])     # ② 落地页 citation_pdf_url 兜底
-        if b:
-            return b, u
-        return None, "; ".join(x for x in (wiley_reason, u) if x)
-    return None, wiley_reason
+        reasons.append(f"{why}:{u}")
+    return None, "; ".join(x for x in reasons if x)
+
+
+def text_matches_paper(text: str, paper: Dict, min_frac: float = 0.6):
+    """Does this text belong to the paper? Yes when the DOI appears, or when at least `min_frac` of the title's
+    words (4+ characters) do. Returns (ok, reason); reason is "" or "pdf_identity_mismatch(...)". A paper with no
+    usable DOI and fewer than 3 such title words cannot be tested and passes."""
+    norm = _norm_title(text)
+    toks = set(norm.split())
+    doi = (paper.get("doi") or "").lower()
+    if _usable_doi(doi) and (doi in text.lower() or _norm_title(doi) in norm):
+        return True, ""
+    words = [w for w in _norm_title(paper.get("title") or "").split() if len(w) >= 4]
+    if len(words) < 3:
+        return True, ""
+    hit = sum(1 for w in words if w in toks)
+    if hit / len(words) >= min_frac:
+        return True, ""
+    return False, f"pdf_identity_mismatch(title_words {hit}/{len(words)}, no doi)"
+
+
+def pdf_matches_paper(pdf: bytes, paper: Dict, pages: int = 30):
+    """Identity check on a downloaded PDF from its text layer (up to `pages` pages: Wiley TDM can return a whole
+    Brief Reports section with the target article on a later page). A PDF that cannot be opened, has no text layer
+    (scan) or a garbled one (old PDFs without a Unicode map) passes here; the parse step re-checks the parsed text."""
+    try:
+        import fitz
+        doc = fitz.open(stream=pdf, filetype="pdf")
+        text = " ".join(doc[i].get_text() for i in range(min(pages, doc.page_count)))
+    except Exception:
+        return True, ""
+    compact = "".join(text.split())
+    if len(compact) < 200 or sum(c.isalpha() for c in compact) / len(compact) < 0.5:
+        return True, ""
+    return text_matches_paper(text, paper)
 
 
 def _has_pdf(p):
-    # 有 doi 也允许：_download_pdf 会用 Unpaywall(resolve_oa_pdf) 反查 OA 直链，
+    # 有 doi 也允许：_download_pdf 会用 Unpaywall(_oa_pdf_candidates) 反查 OA 直链，
     # 裸 DOI 的 gold/green OA 文章才不会被挡在 PDF 兜底之外。
     return bool(p.get("pdf_url") or p.get("land_url") or p.get("pmcid") or p.get("doi"))
 

@@ -95,7 +95,11 @@ is saved as `articles/<article_id>/article.pdf` and its provenance recorded in
 `article.json`.
 
 - `--access open` (default) — open-access PDFs only (PMC, Unpaywall,
-  publisher OA APIs). No setup needed:
+  publisher OA APIs). Every downloaded PDF must carry the article's DOI or
+  most of its title words in its text layer; a mirror that serves another file
+  (a repository's licence flyer, doi.org's trademark policy) is skipped for the
+  next candidate, and the reason `pdf_identity_mismatch(...)` is logged. No
+  setup needed:
 
   ```bash
   python paper_download.py fetch --collection demo --output-format pdf --access open

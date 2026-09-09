@@ -6,6 +6,19 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- PDF identity check. Unpaywall and landing-page mirrors sometimes serve a
+  file that is not the article (seen in a 22k-article run: a French Creative
+  Commons flyer from an institutional repository for 4 Elsevier DOIs, doi.org's
+  trademark-policy PDF for an unresolvable DOI). `download_pdf` now walks the
+  candidate list and keeps the first PDF whose text layer contains the DOI or
+  at least 60% of the title's words (4+ characters), skipping the others with
+  reason `pdf_identity_mismatch(...)`; PDFs without a usable text layer (scans,
+  garbled old fonts) pass this stage. The same rule runs on the parsed text in
+  `doc_matches_article`, so `parse` and the non-deferred PDF route reject a
+  wrong file instead of storing it as full text. Calibrated on 2075 saved
+  PDFs (1 rejected, the trademark PDF) and 457 parsed PDF full texts (0).
+
 ### Fixed
 - Two per-article lookups bypassed the rate-limited client and drew HTTP 429
   when several fetch jobs ran in parallel (auto-retried, so nothing was lost,

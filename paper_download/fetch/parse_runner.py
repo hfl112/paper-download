@@ -31,6 +31,9 @@ def parse_saved_pdf(store: CollectionStore, article: dict[str, Any]) -> tuple[di
             "fulltext_url": (article.get("links") or {}).get("publisher", {}).get("pdf", ""),
             "accessed_at": utc_now(), "license": "", "license_url": "", "reuse_class": ""}
     doc = fulltext_fetcher.build_doc(flat.get("pmcid") or "", parsed, flat, prov)
+    matches, mismatch_reason = assemble_mod.doc_matches_article(article, doc)   # wrong file saved (mirror gave another PDF)
+    if not matches:
+        return None, mismatch_reason
     updated = assemble_mod.assemble_from_doc(article, doc)
     if updated is None:
         return None, "quality_reject(" + ",".join(doc["quality"].get("issues") or []) + ")"

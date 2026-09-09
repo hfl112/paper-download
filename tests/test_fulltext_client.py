@@ -104,3 +104,20 @@ def test_client_restored_after_call():
     before = fs._client
     fs.get_fulltext({"pmcid": "PMC123"}, sources=["pmc_xml"], client=FakeClient())
     assert fs._client is before  # seam swap is scoped to the call
+
+
+def test_text_matches_paper_rules():
+    paper = {"doi": "10.1002/pbc.27077", "title": "Outcome of children with relapsed neuroblastoma treated with irinotecan"}
+    assert fs.text_matches_paper("... DOI: 10.1002/PBC.27077 ...", paper) == (True, "")
+    assert fs.text_matches_paper("Outcome of children with relapsed neuro-\nblastoma treated with irinotecan and temozolomide",
+                                 paper)[0]
+    assert not fs.text_matches_paper("Les licences Creative Commons sont des outils juridiques gratuits", paper)[0]
+    assert fs.text_matches_paper("anything", {"doi": "", "title": "Short one"}) == (True, "")   # nothing to test against
+
+
+def test_download_pdf_skips_candidate_that_fails_identity(monkeypatch):
+    pdf_bytes = b"%PDF-1.4 fake pdf body"
+    client = FakeClient(blobs={"https://europepmc.org/articles/PMC123?pdf=render": pdf_bytes})
+    monkeypatch.setattr(fs, "pdf_matches_paper", lambda b, p: (False, "pdf_identity_mismatch(test)"))
+    pdf, reason = fs.download_pdf({"pmcid": "PMC123"}, client=client)
+    assert pdf is None and reason.startswith("pdf_identity_mismatch(test):epmc_render:PMC123")
