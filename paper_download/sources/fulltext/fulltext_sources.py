@@ -44,7 +44,7 @@ from .fulltext_fetcher import (
     parse_article_html,
     parse_jats,
     parse_pmc_html,
-    resolve_pmcid,
+    EPMC_SEARCH,
 )
 
 load_env()
@@ -93,7 +93,7 @@ class UrllibClient:
     _RATE = {
         "eutils.ncbi.nlm.nih.gov": 0.15 if NCBI_KEY else 0.34,
         "www.ncbi.nlm.nih.gov":    0.34,
-        "www.ebi.ac.uk":           0.5,
+        "www.ebi.ac.uk":           1.0,    # Europe PMC REST (search + fullTextXML); 5 keyless-parallel jobs at 0.5 drew 429s
         "api.springernature.com":  0.7,
         "api.elsevier.com":        1.0,
         "api.biorxiv.org":         1.0,
@@ -105,7 +105,7 @@ class UrllibClient:
         "api.wiley.com":           10.0,   # Wiley TDM terms: 60 requests per 10 minutes
         "link.springer.com":       3.0,    # Springer Nature TDM policy: 1 request/s for direct downloads; 3 s leaves room for 3 parallel jobs
         "www.nature.com":          3.0,
-        "europepmc.org":           1.0,    # PDF render is a heavy call; the REST API on www.ebi.ac.uk keeps 0.5
+        "europepmc.org":           1.0,    # PDF render is a heavy call
     }
     _DEFAULT_RATE = 0.5
     _NOVERIFY = _ssl._create_unverified_context()
@@ -196,6 +196,29 @@ def _using_client(client: Optional[HttpClient]):
         yield
     finally:
         _client = prev
+
+
+def resolve_pmcid(doi: Optional[str] = None, pmid: Optional[str] = None) -> Optional[str]:
+    """Look up the PMCID by DOI / PMID through the Europe PMC REST search, via the
+    throttled client (the standalone helper in fulltext_fetcher is unthrottled and
+    drew HTTP 429 when several fetch jobs ran in parallel). None = no PMC version."""
+    queries = []
+    if doi:
+        queries.append(f'DOI:"{doi}"')
+    if pmid:
+        queries.append(f'EXT_ID:{pmid} AND SRC:MED')
+    for q in queries:
+        url = f"{EPMC_SEARCH}?{urllib.parse.urlencode({'query': q, 'format': 'json', 'pageSize': 1})}"
+        code, body, _ = http_get(url)
+        if code != 200 or not body:
+            continue
+        try:
+            res = json.loads(body).get("resultList", {}).get("result", [])
+        except ValueError:
+            continue
+        if res and res[0].get("pmcid"):
+            return res[0]["pmcid"].upper()
+    return None
 
 
 # ── Elsevier 解析器（非 JATS，ce: 命名空间；返回 parse_jats 同结构 dict）─────────

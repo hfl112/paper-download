@@ -6,6 +6,13 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- The PMCID lookup (Europe PMC REST search, run for every article that has a
+  DOI or PMID but no PMCID) went through an unthrottled urllib helper, so
+  parallel fetch jobs drew HTTP 429 from Europe PMC (auto-retried, ~150 in the
+  first 3 jobs x 1.5 h). It now uses the throttled client; the www.ebi.ac.uk
+  interval is 1 s per process.
+
 ### Added
 - `fetch --defer-pdf-parse` and the new `parse` command split full-text
   retrieval in two: fetch tries the structured sources and, when only a PDF is
