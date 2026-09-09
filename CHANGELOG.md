@@ -7,6 +7,13 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- `fetch --defer-pdf-parse` and the new `parse` command split full-text
+  retrieval in two: fetch tries the structured sources and, when only a PDF is
+  available (Wiley TDM, Unpaywall mirrors, landing pages), saves it with
+  `status.fulltext = pdf_pending`; `parse` later runs Docling on the saved
+  PDFs with no network access. Fetch stays inside publisher rate limits while
+  parsing scales across nodes or onto a GPU (Docling on one Wiley PDF: about
+  35 s on 4 CPU cores).
 - `ELSEVIER_INSTTOKEN`: sent as `X-ELS-Insttoken` with the Elsevier article API
   so text mining works from hosts outside the institution's IP range.
 - Articles without a usable DOI (none, or a journal's own code that Europe PMC

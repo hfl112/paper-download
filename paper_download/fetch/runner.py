@@ -36,9 +36,9 @@ def _access_routes(access: str) -> list[str]:
     return ["open", "library"]  # both: open first, library fallback
 
 
-def _json_fetcher(route: str) -> Callable[[CollectionStore, dict[str, Any]], tuple[dict[str, Any] | None, str]]:
+def _json_fetcher(route: str, defer_pdf: bool = False) -> Callable[[CollectionStore, dict[str, Any]], tuple[dict[str, Any] | None, str]]:
     if route == "open":
-        return lambda store, article: artifacts.fetch_json_open(article)
+        return lambda store, article: artifacts.fetch_json_open(store, article, defer_pdf=defer_pdf)
     return library.fetch_json_library
 
 
@@ -58,6 +58,7 @@ def run_fetch(
     interactive: bool | None = None,
     speed: str = "fast",
     ids: set[str] | None = None,
+    defer_pdf_parse: bool = False,
 ) -> Path:
     if output_format not in {"json", "pdf", "both"}:
         raise ValueError("--output-format must be json, pdf, or both")
@@ -93,8 +94,12 @@ def run_fetch(
     processed_library = 0
     total = len(articles)
 
+    def _json_done(a: dict) -> bool:
+        # with --defer-pdf-parse a saved, not yet parsed PDF counts as done for this command; `parse` finishes it
+        return article_mod.has_fulltext(a) or (defer_pdf_parse and article_mod.has_pending_pdf(a))
+
     def _needs(a: dict) -> bool:
-        nj = output_format in {"json", "both"} and (force or not article_mod.has_fulltext(a))
+        nj = output_format in {"json", "both"} and (force or not _json_done(a))
         np = output_format in {"pdf", "both"} and (force or not article_mod.has_pdf(a))
         return nj or np
 
@@ -112,7 +117,7 @@ def run_fetch(
               flush=True)
 
     for article in articles:
-        prior_ft_ok = article_mod.has_fulltext(article)
+        prior_ft_ok = _json_done(article)
         prior_pdf_ok = article_mod.has_pdf(article)
 
         want_json = output_format in {"json", "both"}
@@ -141,7 +146,7 @@ def run_fetch(
 
         for route in routes:
             if need_json and not json_ok:
-                updated, reason = _json_fetcher(route)(store, article)
+                updated, reason = _json_fetcher(route, defer_pdf_parse)(store, article)
                 attempts.append({"access": route, "artifact": "json",
                                  "status": "succeeded" if updated else "failed", "reason": reason})
                 if updated:
@@ -188,7 +193,7 @@ def run_fetch(
     return store.write_log(
         "fetch",
         {"output_format": output_format, "access": access, "limit": limit, "force": force,
-         "ids": sorted(ids) if ids is not None else None},
+         "ids": sorted(ids) if ids is not None else None, "defer_pdf_parse": defer_pdf_parse},
         {"total": len(articles), "succeeded": succeeded, "failed": failed, "skipped": skipped},
         items,
         started,

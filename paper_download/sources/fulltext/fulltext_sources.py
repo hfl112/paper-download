@@ -990,6 +990,9 @@ ADAPTERS = {
 #   - "ezproxy_html"/"ezproxy_pdf"：EZProxy 订阅路，依赖机构 Cookie、requests 过不了强反爬，收益有限。
 #   - "pdf_docling"/"pdf_pymupdf"/"pdf_ocr"：PDF 单方法，供单测/强制指定；默认用 "pdf"(三层自动)。
 PRIORITY = ["pmc_xml", "pmc_html", "epmc_xml", "springer", "wiley_tdm", "elsevier", "biorxiv", "arxiv", "pdf"]
+# 直接给结构化文本的源；PDF 来源(wiley_tdm / arxiv / pdf)在 fetch --defer-pdf-parse 下只落盘，交给 `parse` 命令
+STRUCTURED_SOURCES = ["pmc_xml", "pmc_html", "epmc_xml", "springer", "elsevier", "biorxiv"]
+parse_pdf_3layer = _parse_pdf_3layer
 ALL_SOURCES = list(ADAPTERS)   # 含未进默认链的（core / pdf 单方法等），需要时 sources=ALL_SOURCES
 
 

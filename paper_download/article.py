@@ -26,6 +26,7 @@ NOT_STARTED = "not_started"
 FOUND = "found"
 FAILED = "failed"
 AVAILABLE = "available"
+PDF_PENDING = "pdf_pending"   # fulltext: a PDF is saved, `parse` has not run on it yet
 
 
 # --------------------------------------------------------------------------
@@ -231,6 +232,12 @@ def mark_pdf_failed(article: dict[str, Any]) -> None:
     article.setdefault("status", {})["pdf"] = FAILED
 
 
+def mark_fulltext_pending(article: dict[str, Any]) -> None:
+    """A PDF was saved instead of being parsed inline (fetch --defer-pdf-parse); `parse` turns it into sections."""
+    article.setdefault("status", {})["fulltext"] = PDF_PENDING
+    article.setdefault("source", {})["fulltext"] = ""
+
+
 # --------------------------------------------------------------------------
 # State queries — "what state is this article in" answered in one place
 # --------------------------------------------------------------------------
@@ -249,3 +256,7 @@ def has_fulltext(article: Mapping[str, Any]) -> bool:
 
 def has_pdf(article: Mapping[str, Any]) -> bool:
     return _status(article, "pdf") == AVAILABLE
+
+
+def has_pending_pdf(article: Mapping[str, Any]) -> bool:
+    return _status(article, "fulltext") == PDF_PENDING and has_pdf(article)

@@ -147,9 +147,21 @@ several-thousand-character query does not hit the URL length limit.
 | `--access open\|library\|both` | where from (default `open`); see [Downloading PDFs](#downloading-pdfs) |
 | `--limit <n>` | stop after n articles |
 | `--ids-file <file>` | only the article_ids listed in the file (one per line); split one collection across several jobs |
+| `--defer-pdf-parse` | `json`: try the structured sources (PMC, Europe PMC, Springer, Elsevier, bioRxiv); when they fail, save the PDF (`status.fulltext = pdf_pending`) instead of parsing it here. Run `parse` afterwards. Keeps the network-bound fetch and the CPU/GPU-bound Docling parse in separate jobs |
 | `--force` | re-fetch articles already done |
 | `--non-interactive` | never open a login browser; fail fast without a saved library session |
 | `--speed fast\|normal\|slow` | library throttle between articles: 8s fixed / 5–60s random / 50–300s random (default `fast`) |
+
+### `parse` — turn saved PDFs into sections
+
+For collections fetched with `--defer-pdf-parse` (or any article that has an `article.pdf` but no
+full text). No network access: run it on as many nodes, or on a GPU, as you like.
+
+| Option | Meaning |
+|---|---|
+| `--ids-file <file>` | only these article_ids (one per line) |
+| `--limit <n>` | stop after n articles |
+| `--force` | re-parse articles that already have full text |
 
 ### `status` — print and log collection state
 

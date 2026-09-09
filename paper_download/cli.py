@@ -61,8 +61,17 @@ def cmd_fetch(args: argparse.Namespace) -> None:
         interactive=(False if args.non_interactive else None),
         speed=args.speed,
         ids=_read_ids(args.ids_file),
+        defer_pdf_parse=args.defer_pdf_parse,
     )
     print(f"Wrote fetch log: {path}")
+
+
+def cmd_parse(args: argparse.Namespace) -> None:
+    from .fetch.parse_runner import run_parse
+
+    store = CollectionStore.open(args.collection)
+    path = run_parse(store, ids=_read_ids(args.ids_file), limit=args.limit, force=args.force)
+    print(f"Wrote parse log: {path}")
 
 
 def _read_ids(path: str | None) -> set[str] | None:
@@ -176,11 +185,20 @@ def build_parser(prog: str | None = None) -> argparse.ArgumentParser:
     p.add_argument("--ids-file", dest="ids_file",
                    help="only fetch the article_ids listed in this file (one per line); lets several jobs share one collection")
     p.add_argument("--force", action="store_true")
+    p.add_argument("--defer-pdf-parse", dest="defer_pdf_parse", action="store_true",
+                   help="json: save PDFs from PDF-only sources instead of parsing them here; run `parse` afterwards")
     p.add_argument("--non-interactive", dest="non_interactive", action="store_true",
                    help="Never prompt/open a login browser; require a pre-established library session and fail fast otherwise")
     p.add_argument("--speed", choices=["fast", "normal", "slow"], default="fast",
                    help="Library throttle between articles: fast=8s, normal=5-60s random, slow=50-300s random (slower avoids reCAPTCHA)")
     p.set_defaults(func=cmd_fetch)
+
+    p = sub.add_parser("parse", help="Parse saved article.pdf files into sections (after fetch --defer-pdf-parse)")
+    p.add_argument("--collection", required=True)
+    p.add_argument("--ids-file", dest="ids_file", help="only these article_ids (one per line)")
+    p.add_argument("--limit", type=int)
+    p.add_argument("--force", action="store_true", help="re-parse articles that already have full text")
+    p.set_defaults(func=cmd_parse)
 
     p = sub.add_parser("status", help="Print and log collection status")
     p.add_argument("--collection", required=True)
